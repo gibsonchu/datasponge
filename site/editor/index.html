@@ -18,24 +18,24 @@
     <a href="https://flooding-local-help.vercel.app/" target="_blank" rel="noreferrer">Local Help ↗</a>
     <a href="https://flood-clips.vercel.app/" target="_blank" rel="noreferrer">Flood Clips ↗</a>
     <span><strong id="me"></strong> <span class="role" id="myRole"></span></span>
-    <button type="button" class="link-btn" id="sign-out">Sign out</button>
+    <button type="button" class="link-btn" id="sign-out">Sign Out</button>
   </div>
 </header>
 
 <section id="login" class="login" hidden>
   <div class="login-card">
-    <h1>Sign in</h1>
+    <h1>Sign In</h1>
     <p>Manage what DataSponge publishes to Local Help, Flood Clips, and Flood Chat.</p>
     <form id="password-form">
       <label>Email<input name="email" type="email" autocomplete="username" required></label>
       <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
-      <button class="btn primary" type="submit">Sign in</button>
+      <button class="btn primary" type="submit">Sign In</button>
     </form>
     <div class="or"><span>or</span></div>
     <form id="link-form">
       <p class="fine">No password? We'll email you a sign-in link.</p>
       <label>Email<input name="email" type="email" autocomplete="email" required></label>
-      <div class="row"><button class="btn" type="submit" name="kind" value="magic">Email me a sign-in link</button><button class="link-btn" type="submit" name="kind" value="reset">Forgot password?</button></div>
+      <div class="row"><button class="btn" type="submit" name="kind" value="magic">Email Me a Sign-In Link</button><button class="link-btn" type="submit" name="kind" value="reset">Forgot Password?</button></div>
     </form>
     <p class="form-msg" id="login-msg" role="status"></p>
   </div>
@@ -43,16 +43,16 @@
 
 <section id="set-password" class="login" hidden>
   <form class="login-card" id="new-password-form">
-    <h1>Choose a new password</h1>
+    <h1>Choose a New Password</h1>
     <label>New password<input name="password" type="password" autocomplete="new-password" minlength="10" required></label>
-    <button class="btn primary" type="submit">Save password</button>
+    <button class="btn primary" type="submit">Save Password</button>
     <p class="form-msg" role="status"></p>
   </form>
 </section>
 
 <section id="not-member" class="login" hidden>
   <div class="login-card">
-    <h1>You're signed in, but not a member yet</h1>
+    <h1>You're Signed In, but Not a Member Yet</h1>
     <p>Ask a DataSponge admin to add <strong id="nm-email"></strong> in the Editor under <em>People</em>. Then sign out and back in.</p>
     <button class="btn" type="button" id="nm-out">Sign out</button>
   </div>
@@ -61,10 +61,10 @@
 <main id="app" class="main" hidden>
   <nav class="tabs" aria-label="Editor sections">
     <button data-view="FSS">Services <span class="count" id="c-FSS"></span></button>
-    <button data-view="FRS">Answers &amp; resources <span class="count" id="c-FRS"></span></button>
+    <button data-view="FRS">Answers &amp; Resources <span class="count" id="c-FRS"></span></button>
     <button data-view="FMS">Clips <span class="count" id="c-FMS"></span></button>
-    <button data-view="inbox">Clip inbox <span class="count alert" id="c-inbox"></span></button>
-    <button data-view="removals">Removal requests <span class="count alert" id="c-removals"></span></button>
+    <button data-view="inbox">Clip Inbox <span class="count alert" id="c-inbox"></span></button>
+    <button data-view="removals">Removal Requests <span class="count alert" id="c-removals"></span></button>
     <button data-view="import">Upload CSV</button>
     <button data-view="trash">Trash <span class="count" id="c-trash"></span></button>
     <button data-view="people" data-admin hidden>People</button>

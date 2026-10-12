@@ -20,10 +20,12 @@ import {
 } from "./widgets.js";
 
 const $ = (s, el = document) => el.querySelector(s);
+const SMALL_WORDS = new Set(["a", "an", "and", "or", "the", "of", "to", "in", "on", "for", "by"]);
+const titleCase = (t) => t.replace(/\b\w+/g, (w, i) => (i > 0 && SMALL_WORDS.has(w) ? w : w[0].toUpperCase() + w.slice(1)));
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const NAMES = {
-  FSS: { one: "service", many: "Services", add: "Add a service" },
-  FRS: { one: "answer or resource", many: "Answers & resources", add: "Add an answer or resource" },
+  FSS: { one: "service", many: "Services", add: "Add a Service" },
+  FRS: { one: "answer or resource", many: "Answers & Resources", add: "Add an Answer or Resource" },
   FMS: { one: "clip", many: "Clips" },
 };
 const GROUPS = { basics: "Basics", contact: "Contact", where: "Service Area", who: "Who It's For & Topics", details: "Details", source: "Source & Review (Internal Only)", visibility: "Visibility" };
@@ -336,8 +338,8 @@ function listView(std) {
       <input type="search" id="list-q" placeholder="Search ${NAMES[std].many.toLowerCase()}…" value="${esc(l.q)}" aria-label="Search">
       <span class="spacer"></span>
       ${std === "FSS" && isAdmin() ? `<button class="btn lookup" data-go="fill">✨ Fill Missing Details</button>` : ""}
-      ${std === "FSS" && canPublish() ? `<button class="btn" data-go="many">+ Add Many</button>` : ""}
       <button class="btn" data-go="import">Upload CSV</button>
+      ${std === "FSS" && canPublish() ? `<button class="btn" data-go="many">+ Add Many</button>` : ""}
       <button class="btn primary" data-new="${std}">+ ${NAMES[std].add}</button>
     </div>
     <div class="bar filters-bar">
@@ -347,14 +349,14 @@ function listView(std) {
       <label class="inline">Seen by<select id="list-audience"><option value="">Everyone</option>${AUDIENCES.map((k) => opt("audience", k, AUDIENCE_LABEL[k])).join("")}</select></label>
       <span class="spacer"></span>
       <span class="sub" aria-live="polite">Showing ${items.length} of ${all.length}</span>
-      ${filtered ? `<button class="link-btn" data-clear-filters>Clear filters</button>` : ""}
+      ${filtered ? `<button class="link-btn" data-clear-filters>Clear Filters</button>` : ""}
     </div>
     ${items.length ? `<table class="table"><thead><tr>
       <th aria-sort="${nameSort}"><button class="th-sort" data-sort="${l.sort === "az" ? "za" : "az"}">${std === "FSS" ? "Service" : "Title"}${arrow(nameSort)}</button></th>
       <th>${typeName}</th><th>Status &amp; visibility</th>
       <th aria-sort="${dateSort}"><button class="th-sort" data-sort="${l.sort === "new" ? "old" : "new"}">Updated${arrow(dateSort)}</button></th>
       <th></th></tr></thead><tbody>${rows}</tbody></table>`
-      : `<div class="empty"><h2>No ${NAMES[std].many.toLowerCase()} match.</h2><p>${filtered ? "Try clearing the filters." : "Add one to get started."}</p>${filtered ? `<button class="btn primary" data-clear-filters>Clear filters</button>` : ""}</div>`}`;
+      : `<div class="empty"><h2>No ${NAMES[std].many.toLowerCase()} match.</h2><p>${filtered ? "Try clearing the filters." : "Add one to get started."}</p>${filtered ? `<button class="btn primary" data-clear-filters>Clear Filters</button>` : ""}</div>`}`;
 }
 
 // ---------- published clips ----------
@@ -368,7 +370,7 @@ function clipsView() {
       <input type="search" id="list-q" placeholder="Search clips…" value="${esc(l.q)}" aria-label="Search clips">
       <label class="inline">Status<select id="list-status"><option value="">All</option>${STATUSES.map((k) => `<option value="${k}" ${l.status === k ? "selected" : ""}>${STATUS_LABEL[k]}</option>`).join("")}</select></label>
       <span class="spacer"></span>
-      ${pending ? `<button class="btn primary" data-go="inbox">Review ${pending} new submission${pending === 1 ? "" : "s"}</button>` : ""}
+      ${pending ? `<button class="btn primary" data-go="inbox">Review ${pending} New Submission${pending === 1 ? "" : "s"}</button>` : ""}
       <a class="btn" href="${CLIPS_URL}" target="_blank" rel="noreferrer">Open Flood Clips ↗</a>
     </div>
     ${items.length ? `<table class="table"><thead><tr><th>Clip</th><th>Where</th><th>Status &amp; visibility</th><th>Filmed</th><th></th></tr></thead><tbody>${items
@@ -382,7 +384,7 @@ function clipsView() {
           <td><div class="row-actions"><a class="btn" href="${CLIPS_URL}?clip=${i.id}" target="_blank" rel="noreferrer">View ↗</a><a class="btn" href="${esc(d.source.url)}" target="_blank" rel="noreferrer">Original ↗</a>${canPublish() ? `<button class="btn danger" data-trash="${i.id}">Trash</button>` : ""}</div></td></tr>`;
       })
       .join("")}</tbody></table>`
-      : `<div class="empty"><h2>No clips yet.</h2><p>Approved submissions from Flood Clips appear here.</p>${pending ? `<button class="btn primary" data-go="inbox">Review submissions</button>` : ""}</div>`}`;
+      : `<div class="empty"><h2>No clips yet.</h2><p>Approved submissions from Flood Clips appear here.</p>${pending ? `<button class="btn primary" data-go="inbox">Review Submissions</button>` : ""}</div>`}`;
 }
 
 // ---------- clip inbox ----------
@@ -415,12 +417,12 @@ function inboxView() {
           <label>Date filmed<input name="observed_on" type="date" value="${esc(s.observed_on || "")}"></label>
           <label>Storm<input name="storm" value="${esc(s.storm || "")}" placeholder="e.g. Hurricane Ida"></label>
           <label>Alt text<input name="alt_text" placeholder="What the clip shows, for screen readers"></label>
-          <div class="clip-actions">${canPublish() ? `<button class="btn good" type="submit" name="do" value="approve">Approve &amp; publish</button><button class="btn danger" type="submit" name="do" value="reject">Reject</button>` : `<span class="sub">An editor needs to approve this.</span>`}</div>
+          <div class="clip-actions">${canPublish() ? `<button class="btn good" type="submit" name="do" value="approve">Approve &amp; Publish</button><button class="btn danger" type="submit" name="do" value="reject">Reject</button>` : `<span class="sub">An editor needs to approve this.</span>`}</div>
         </form></div></section>`;
     })
     .join("");
   const history = done.length
-    ? `<details ${ui.showHistory ? "open" : ""} id="inbox-history"><summary class="sub">Recently reviewed (${done.length})</summary><table class="table"><tbody>${done
+    ? `<details ${ui.showHistory ? "open" : ""} id="inbox-history"><summary class="sub">Recently Reviewed (${done.length})</summary><table class="table"><tbody>${done
         .map((s) => `<tr><td><div class="name">${esc(s.place_name)}</div><div class="sub"><a href="${esc(s.url)}" target="_blank" rel="noreferrer">${esc(s.platform)} post ↗</a></div></td><td><span class="pill ${s.status === "approved" ? "add" : "unchanged"}">${s.status === "approved" ? "Approved" : "Rejected"}</span></td><td class="sub">${esc(fmtDate(s.reviewed_at))}${s.review_note ? ` · ${esc(s.review_note)}` : ""}</td></tr>`)
         .join("")}</tbody></table></details>`
     : "";
@@ -435,7 +437,7 @@ function removalsView() {
   const row = (q, actions) => `<tr><td><div class="name">${esc(q.record_title || "(record already removed)")}</div><div class="sub"><a href="${CLIPS_URL}?clip=${q.record_id}" target="_blank" rel="noreferrer">View ↗</a></div></td><td>${esc(q.reason)}${q.contact ? `<div class="sub">From ${esc(q.contact)}</div>` : ""}</td><td class="sub">${esc(fmtDate(q.created_at))}</td><td>${actions}</td></tr>`;
   return `<p class="sub">Requests to take something down, sent from the clip viewer. When a creator asks for their own footage to be removed, take it down.</p>
     ${open.length ? `<table class="table"><thead><tr><th>Record</th><th>Reason</th><th>Received</th><th></th></tr></thead><tbody>${open
-      .map((q) => row(q, canPublish() ? `<div class="row-actions"><button class="btn danger" data-removal="${q.id}" data-act="remove">Take it down</button><button class="btn" data-removal="${q.id}" data-act="dismiss">Keep it</button></div>` : `<span class="sub">Editors decide.</span>`))
+      .map((q) => row(q, canPublish() ? `<div class="row-actions"><button class="btn danger" data-removal="${q.id}" data-act="remove">Take It Down</button><button class="btn" data-removal="${q.id}" data-act="dismiss">Keep It</button></div>` : `<span class="sub">Editors decide.</span>`))
       .join("")}</tbody></table>` : `<div class="empty"><h2>No open requests.</h2></div>`}
     ${done.length ? `<h3>Resolved</h3><table class="table"><tbody>${done.map((q) => row(q, `<span class="pill ${q.status === "removed" ? "error" : "unchanged"}">${q.status === "removed" ? "Taken down" : "Kept"}</span>${q.note ? `<div class="sub">${esc(q.note)}</div>` : ""}`)).join("")}</tbody></table>` : ""}`;
 }
@@ -570,9 +572,9 @@ function fillView() {
       <p>Searches the web for each service and fills in <strong>only blank fields</strong>: phone, email, who qualifies, hours, cost, languages, accessibility, and availability details. Names, descriptions, areas, types, and topics are never changed. Each service stays published, is marked “Source checked” with today's date, and is saved as soon as its search finishes.</p>
       <p><strong>${todo.length}</strong> of ${items.length} services have something blank. Expect about ${Math.max(1, Math.ceil((todo.length * 20) / 3 / 60))}–${Math.max(1, Math.ceil((todo.length * 60) / 3 / 60))} minutes and roughly $${(todo.length * 0.1).toFixed(0)}–$${(todo.length * 0.3).toFixed(0)} in AI costs. Keep this tab open while it runs.</p>
       <div class="bar">
-        ${fillRun.running ? `<button class="btn danger" data-fill-stop>Stop after the current searches</button>` : `<button class="btn primary" data-fill-start ${todo.length ? "" : "disabled"}>${done.length ? "Run again on what's still blank" : "Start"}</button>`}
+        ${fillRun.running ? `<button class="btn danger" data-fill-stop>Stop After the Current Searches</button>` : `<button class="btn primary" data-fill-start ${todo.length ? "" : "disabled"}>${done.length ? "Run Again on What's Still Blank" : "Start"}</button>`}
         ${done.length ? `<span class="sub">${count("saved")} saved · ${count("nothing")} nothing new · ${count("error")} problems${fillRun.running ? ` · ${count("working")} searching` : ""}</span>` : ""}
-        ${done.length && !fillRun.running ? `<button class="btn" data-fill-report>Download report (CSV)</button>` : ""}
+        ${done.length && !fillRun.running ? `<button class="btn" data-fill-report>Download Report (CSV)</button>` : ""}
         <span class="spacer"></span><button class="btn" data-go="FSS">Back to Services</button>
       </div>
     </section>
@@ -687,13 +689,13 @@ function manyView() {
       <p>Paste a list of organizations or services: one per line, or separated by bullets or commas. Then look them all up at once, or click any one to open it in the usual form.</p>
       <form id="many-form" class="many-paste">
         <textarea name="names" rows="5" placeholder="• Red Hook Initiative&#10;• Brooklyn Legal Services&#10;• NYC Sump Pump Pros"></textarea>
-        <div class="bar"><button class="btn primary" type="submit">Add to list</button><span class="spacer"></span><button class="btn" type="button" data-go="FSS">Back to Services</button></div>
+        <div class="bar"><button class="btn primary" type="submit">Add to List</button><span class="spacer"></span><button class="btn" type="button" data-go="FSS">Back to Services</button></div>
       </form>
     </section>
     ${rows.length ? `<section class="panel">
       <div class="bar">
         ${many.running
-          ? `<button class="btn danger" data-many-stop>Stop after the current searches</button>`
+          ? `<button class="btn danger" data-many-stop>Stop After the Current Searches</button>`
           : `<button class="btn lookup" data-many-run ${pending ? "" : "disabled"}>✨ Look Up &amp; Add All (${pending})</button>`}
         <label class="inline">Save as <select id="many-save-as" ${many.running ? "disabled" : ""}>
           <option value="draft" ${many.saveAs === "draft" ? "selected" : ""}>Drafts (review before publishing)</option>
@@ -701,7 +703,7 @@ function manyView() {
         </select></label>
         <span class="sub">${count("added")} added · ${count("problem")} need a person · ${count("exists")} already listed</span>
         <span class="spacer"></span>
-        ${many.running ? "" : `<button class="link-btn" data-many-clear-done>Remove added rows</button> <button class="link-btn" data-many-clear>Clear list</button>`}
+        ${many.running ? "" : `<button class="link-btn" data-many-clear-done>Remove Added Rows</button> <button class="link-btn" data-many-clear>Clear List</button>`}
       </div>
       <p class="sub">Each lookup takes 20–60 seconds and costs roughly 10–30 cents. Keep this tab open while it runs. Anything it can't find or finish stays here for a person.</p>
       <table class="table"><thead><tr><th>Organization or service</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>${rows
@@ -709,7 +711,7 @@ function manyView() {
           const [cls, label] = MANY_STATE[r.state];
           return `<tr><td class="name">${esc(r.name)}</td><td><span class="pill ${cls}">${label}</span></td><td class="sub">${esc(r.note || "")}</td>
             <td><div class="row-actions">${r.state === "added" ? (r.id ? `<button class="btn" data-edit-id="${r.id}">Open</button>` : "")
-              : r.state === "exists" ? `<button class="btn" data-edit-id="${r.id}">Open existing</button>`
+              : r.state === "exists" ? `<button class="btn" data-edit-id="${r.id}">Open Existing</button>`
               : `<button class="btn" data-many-open="${i}" ${r.state === "searching" ? "disabled" : ""}>Open</button>`}
             ${r.state === "searching" ? "" : `<button class="btn danger" data-many-remove="${i}" aria-label="Remove ${esc(r.name)}">×</button>`}</div></td></tr>`;
         })
@@ -868,7 +870,7 @@ function fieldHtml(c, std, value, isNew) {
     input = `<input id="${id}" name="${c.key}" type="${type}" value="${esc(value)}"${dl}>${c.suggest ? `<datalist id="dl-${c.key}">${c.suggest.map((s) => `<option value="${esc(s)}">`).join("")}</datalist>` : ""}`;
   }
   const lookup = c.key === "title" && std === "FSS" && canPublish();
-  if (lookup) input = `<div class="lookup-row">${input}<button type="button" class="btn lookup" id="lookup">✨ Look it up</button></div><span class="lookup-status" id="lookup-status" role="status"></span>`;
+  if (lookup) input = `<div class="lookup-row">${input}<button type="button" class="btn lookup" id="lookup">✨ Look It Up</button></div><span class="lookup-status" id="lookup-status" role="status"></span>`;
   return `<label class="field ${wide ? "wide" : ""}" data-field="${c.key}" for="${id}"><span>${esc(labelOf(c, std))}${req}</span>${input}${hint}<span class="err"></span></label>${
     lookup ? `<details class="lookup-details wide" id="lookup-details" hidden><summary>Web Search Details</summary><div id="lookup-body"></div></details>` : ""
   }`;
@@ -880,7 +882,7 @@ function openEditor(std, item = null) {
   editing.row = row;
   editing.extra = {}; // values the form doesn't show (e.g. a looked-up source link)
   editing.opened = new Set(); // optional details someone chose to add
-  $("#editor-title").textContent = item ? `Edit ${NAMES[std].one}` : NAMES[std].add;
+  $("#editor-title").textContent = item ? `Edit ${titleCase(NAMES[std].one)}` : NAMES[std].add;
   const cols = columnsFor(std).filter((c) => !(c.formHidden && std === "FSS"));
   let html = Object.keys(GROUPS)
     .map((g) => [g, cols.filter((c) => c.group === g)])
@@ -889,14 +891,14 @@ function openEditor(std, item = null) {
       const main = cs.filter((c) => !c.advanced).map((c) => fieldHtml(c, std, row[c.key], !item)).join("");
       const more = cs.filter((c) => c.advanced).map((c) => fieldHtml(c, std, row[c.key], !item)).join("");
       const extra = g === "details" && std === "FSS" ? `<p class="details-note wide" id="details-note" hidden></p>` : "";
-      return `<fieldset class="fgroup" data-group="${g}"><legend>${GROUPS[g]}</legend>${extra}${main}${more ? `<details class="more-review wide"><summary>More review details</summary><div class="fgroup">${more}</div></details>` : ""}</fieldset>`;
+      return `<fieldset class="fgroup" data-group="${g}"><legend>${GROUPS[g]}</legend>${extra}${main}${more ? `<details class="more-review wide"><summary>More Review Details</summary><div class="fgroup">${more}</div></details>` : ""}</fieldset>`;
     })
     .join("");
   if (item) html += `<p class="sub" style="margin-top:18px">DataSponge id <code>${esc(row.id)}</code> · local id <code>${esc(row.local_id)}</code> · version ${item.record.metadata.record_version}</p>`;
   if (!canPublish()) html = `<p class="notice">As a contributor you can save drafts. An editor publishes them.</p>` + html;
   $("#editor-body").innerHTML = html;
   $("#editor-error").textContent = "";
-  $("#editor-save").textContent = item ? "Save changes" : `Add ${NAMES[std].one}`;
+  $("#editor-save").textContent = item ? "Save Changes" : `Add ${titleCase(NAMES[std].one)}`;
   $("#editor").showModal();
   if (std === "FSS") showDetailsFor();
   $("#editor-body [data-field=title] input")?.focus();
@@ -934,7 +936,7 @@ async function lookUp() {
     status.textContent = err.message;
   } finally {
     btn.disabled = false;
-    btn.textContent = "✨ Look it up";
+    btn.textContent = "✨ Look It Up";
   }
 }
 
@@ -1037,7 +1039,7 @@ function showDetailsFor() {
   }
   const note = $("#details-note");
   const intro = type
-    ? `Showing the details that usually matter for <strong>${esc(form.elements.service_type.selectedOptions[0]?.textContent ?? "this type")}</strong>.${hidden ? ` <button type="button" class="link-btn" data-show-all>Show all details (${hidden} more)</button>` : ""}`
+    ? `Showing the details that usually matter for <strong>${esc(form.elements.service_type.selectedOptions[0]?.textContent ?? "this type")}</strong>.${hidden ? ` <button type="button" class="link-btn" data-show-all>Show All Details (${hidden} more)</button>` : ""}`
     : "";
   note.hidden = !intro && !adders.length;
   note.innerHTML = `${intro}${adders.length ? `<span class="adders">${adders.join("")}</span>` : ""}`;
@@ -1158,23 +1160,23 @@ function importView() {
   const existing = data.items.filter((i) => i.standard === std && i.status !== "excluded");
   return `<div class="steps">
     <section class="panel">
-      <h2>What are you uploading?</h2>
+      <h2>What Are You Uploading?</h2>
       <div class="seg" role="radiogroup" aria-label="Record type">
         <label><input type="radio" name="std" value="FSS" ${std === "FSS" ? "checked" : ""}><span>Services</span></label>
         <label><input type="radio" name="std" value="FRS" ${std === "FRS" ? "checked" : ""}><span>Answers &amp; resources</span></label>
       </div>
       <p>Columns follow the DataSponge ${std === "FSS" ? "Flood Services Standard (FSS 0.1)" : "Flood Resource Standard (FRS 0.1)"}. Start from the template, or download what's already there, edit it in Excel or Google Sheets, and upload it back.</p>
-      <div class="bar"><button class="btn" data-template>Download blank template</button><button class="btn" data-export>Download current ${NAMES[std].many.toLowerCase()} (${existing.length})</button></div>
+      <div class="bar"><button class="btn" data-template>Download Blank Template</button><button class="btn" data-export>Download Current ${NAMES[std].many} (${existing.length})</button></div>
     </section>
     <section class="panel">
-      <h2>Upload your CSV</h2>
+      <h2>Upload Your CSV</h2>
       <p>Rows with an <code>id</code> or <code>local_id</code> that matches a record update it: blank cells and missing columns keep their current values, and <code>CLEAR</code> in a cell erases that field. Rows without one are added. Nothing changes until you confirm, and the import is all-or-nothing.</p>
       <label class="drop" id="drop" tabindex="0"><strong>${ui.importFile ? esc(ui.importFile) : "Choose a CSV file"}</strong><span>${ui.importFile ? "Choose a different file" : "or drag it here"}</span><input type="file" id="file" accept=".csv,text/csv" hidden></label>
       ${ui.ignored.length ? `<p class="notice">Ignored columns that aren't part of the format: ${esc(ui.ignored.join(", "))}</p>` : ""}
     </section>
     ${res ? resultPanel(res) : ""}
     <section class="panel">
-      <h2>Column guide</h2>
+      <h2>Column Guide</h2>
       <p>Required columns are marked *. Separate multiple values with <code>|</code>. Dates are <code>YYYY-MM-DD</code>. Column names can also be the labels shown in the form.</p>
       <div class="scroll"><table class="table guide"><thead><tr><th>Column</th><th>Meaning</th><th>DataSponge field</th><th>Allowed values</th></tr></thead><tbody>${columnsFor(std)
         .map((c) => `<tr><td>${esc(c.key)}${c.required ? ' <span class="req">*</span>' : ""}</td><td><strong>${esc(labelOf(c, std))}</strong><div class="sub">${esc(c.help)}</div></td><td><code>${esc(c.fc)}</code></td><td class="sub">${c.terms ? TERMS[c.terms].map((t) => `<code>${esc(t.key)}</code>`).join(" ") : c.suggest ? "Suggested: " + c.suggest.map((s) => `<code>${esc(s)}</code>`).join(" ") : c.def ? `Default <code>${esc(c.def)}</code>` : ""}</td></tr>`)
@@ -1189,7 +1191,7 @@ function resultPanel(res) {
     .map((r) => `<tr><td class="sub">${r.line}</td><td class="name">${esc(r.title || "(no title)")}</td><td><span class="pill ${r.action}">${{ add: "Add", update: "Update", unchanged: "No change", error: "Problem" }[r.action]}</span></td><td>${r.errors ? `<ul class="problems">${Object.entries(r.errors).map(([k, m]) => `<li><strong>${esc(k)}</strong> ${esc(m)}</li>`).join("")}</ul>` : ""}</td></tr>`)
     .join("");
   return `<section class="panel" id="result">
-    <h2>${res.committed ? "Imported" : "Check before importing"}</h2>
+    <h2>${res.committed ? "Imported" : "Check Before Importing"}</h2>
     <div class="counts"><span class="pill add">${n.add} to add</span><span class="pill update">${n.update} to update</span><span class="pill unchanged">${n.unchanged} unchanged</span><span class="pill error">${n.error} with problems</span></div>
     ${res.committed ? `<p>Saved.</p>` : changes ? `<p>${n.error ? "Rows with problems will be skipped. Fix them in your file and upload again, or import the rest now." : "Everything looks good."}</p><div class="bar"><button class="btn primary" data-commit>Import ${changes} row${changes === 1 ? "" : "s"}</button><button class="btn" data-clear-import>Cancel</button></div>` : `<p>Nothing to import.</p>`}
     <div class="scroll"><table class="table"><thead><tr><th>Line</th><th>Title</th><th>Result</th><th>Problems</th></tr></thead><tbody>${rows}</tbody></table></div>
@@ -1314,7 +1316,7 @@ async function peopleView() {
   }
   const roleSel = (m) => `<select class="state" data-member="${m.user_id}" ${m.email === session.email ? "disabled" : ""} aria-label="Role for ${esc(m.email)}">${Object.keys(ROLE_HELP).map((r) => `<option value="${r}" ${m.role === r ? "selected" : ""}>${r[0].toUpperCase() + r.slice(1)}</option>`).join("")}</select>`;
   el.innerHTML = `<section class="panel">
-      <h2>Add a colleague</h2>
+      <h2>Add a Colleague</h2>
       <p>They sign in on this page with their own email. If they don't have an account yet, they're added the first time they sign in with that address.</p>
       <form id="add-member" class="bar">
         <input name="email" type="email" required placeholder="name@organization.org" aria-label="Email" style="flex:1 1 260px;width:auto">
@@ -1326,7 +1328,7 @@ async function peopleView() {
       .map((m) => `<tr><td class="name">${esc(m.email)}${m.email === session.email ? ' <span class="sub">(you)</span>' : ""}</td>
         <td>${m.pending ? `<span class="pill unchanged">${esc(m.role)}</span>` : roleSel(m)}</td>
         <td>${m.pending ? `<span class="pill warn">Hasn't signed in yet</span>` : m.active ? `<span class="pill add">Active</span>` : `<span class="pill unchanged">Turned off</span>`}</td>
-        <td><div class="row-actions">${m.pending ? `<button class="btn danger" data-unpend="${esc(m.email)}">Remove</button>` : m.email === session.email ? "" : `<button class="btn ${m.active ? "danger" : ""}" data-toggle="${m.user_id}" data-role="${m.role}" data-on="${m.active}">${m.active ? "Turn off access" : "Turn access back on"}</button>`}</div></td></tr>`)
+        <td><div class="row-actions">${m.pending ? `<button class="btn danger" data-unpend="${esc(m.email)}">Remove</button>` : m.email === session.email ? "" : `<button class="btn ${m.active ? "danger" : ""}" data-toggle="${m.user_id}" data-role="${m.role}" data-on="${m.active}">${m.active ? "Turn Off Access" : "Turn Access Back On"}</button>`}</div></td></tr>`)
       .join("")}</tbody></table>`;
   $("#add-member").onsubmit = (e) => {
     e.preventDefault();
