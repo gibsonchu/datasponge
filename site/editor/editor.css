@@ -204,6 +204,9 @@ dialog#editor { width: min(780px, calc(100% - 24px)); max-height: calc(100vh - 2
 .btn.small { min-height: 32px; padding: 4px 12px; font-size: 13px; }
 .details-note .adders { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 
+.many-paste { display: grid; gap: 10px; }
+.many-paste textarea { min-height: 120px; }
+
 /* Panels (import, inbox, people) */
 .panel { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); }
 .panel h2 { margin: 0 0 6px; font-size: 20px; }

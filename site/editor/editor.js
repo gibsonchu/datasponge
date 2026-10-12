@@ -16,7 +16,7 @@ import {
 import {
   serviceTypeHtml, readServiceType, setServiceType, areaHtml, readArea, setAreas, hoursHtml, readHours, setHours, hoursEvents, copyWeekdays,
   costHtml, readCost, setCost, markDirty, topicsHtml, stagesHtml, readStages, setStages, chipsHtml, setChips, chipEvents,
-  availabilityHtml, readAvailability, setAvailability, detailsFor, DETAIL_KEYS, OPTIONAL_DETAILS, topicGroupEvents, syncTopicGroups, costText, hoursText,
+  availabilityHtml, readAvailability, setAvailability, detailsFor, DETAIL_KEYS, OPTIONAL_DETAILS, topicGroupEvents, syncTopicGroups, costText, hoursText, areaFromIds, availabilityKey,
 } from "./widgets.js";
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -262,7 +262,7 @@ $(".tabs").onclick = (e) => {
 };
 function render() {
   const el = $("#view");
-  const views = { fill: fillView, FSS: () => listView("FSS"), FRS: () => listView("FRS"), FMS: clipsView, inbox: inboxView, removals: removalsView, import: importView, trash: trashView, people: () => '<p class="sub">Loading…</p>', log: () => '<p class="sub">Loading…</p>' };
+  const views = { many: manyView, fill: fillView, FSS: () => listView("FSS"), FRS: () => listView("FRS"), FMS: clipsView, inbox: inboxView, removals: removalsView, import: importView, trash: trashView, people: () => '<p class="sub">Loading…</p>', log: () => '<p class="sub">Loading…</p>' };
   el.innerHTML = (views[view] || views.FSS)();
   if (view === "import") wireImport();
   if (view === "people") peopleView();
@@ -336,6 +336,7 @@ function listView(std) {
       <input type="search" id="list-q" placeholder="Search ${NAMES[std].many.toLowerCase()}…" value="${esc(l.q)}" aria-label="Search">
       <span class="spacer"></span>
       ${std === "FSS" && isAdmin() ? `<button class="btn lookup" data-go="fill">✨ Fill Missing Details</button>` : ""}
+      ${std === "FSS" && canPublish() ? `<button class="btn" data-go="many">+ Add Many</button>` : ""}
       <button class="btn" data-go="import">Upload CSV</button>
       <button class="btn primary" data-new="${std}">+ ${NAMES[std].add}</button>
     </div>
@@ -461,6 +462,7 @@ $("#view").addEventListener("input", (e) => {
   }
 });
 $("#view").addEventListener("change", (e) => {
+  if (e.target.id === "many-save-as") many.saveAs = e.target.value;
   const key = { "list-status": "status", "list-type": "type", "list-sort": "sort", "list-audience": "audience" }[e.target.id];
   if (key) {
     lists[view][key] = e.target.value;
@@ -487,6 +489,13 @@ $("#view").addEventListener("click", async (e) => {
   if ("fillStart" in t.dataset) return runFill();
   if ("fillStop" in t.dataset) { fillRun.stop = true; t.disabled = true; return; }
   if ("fillReport" in t.dataset) return fillReport();
+  if ("manyRun" in t.dataset) return runMany();
+  if ("manyStop" in t.dataset) { many.stop = true; t.disabled = true; return; }
+  if (t.dataset.manyOpen) return openManyRow(Number(t.dataset.manyOpen));
+  if (t.dataset.manyRemove) { many.rows.splice(Number(t.dataset.manyRemove), 1); saveMany(); return render(); }
+  if ("manyClear" in t.dataset) { if (confirm("Clear the whole list? Services already added stay in DataSponge.")) { many.rows = []; saveMany(); render(); } return; }
+  if ("manyClearDone" in t.dataset) { many.rows = many.rows.filter((r) => r.state !== "added"); saveMany(); return render(); }
+  if (t.dataset.editId) return openEditor("FSS", data.items.find((i) => i.id === t.dataset.editId));
   if (t.dataset.new) return openEditor(t.dataset.new);
   if (t.dataset.sort) { lists[view].sort = t.dataset.sort; saveHash(); render(); return $("[data-sort]")?.focus(); }
   if ("clearFilters" in t.dataset) { Object.assign(lists[view], { q: "", status: "", type: "", audience: "" }); saveHash(); return render(); }
@@ -506,6 +515,11 @@ $("#view").addEventListener("click", async (e) => {
 });
 $("#view").addEventListener("toggle", (e) => { if (e.target.id === "inbox-history") ui.showHistory = e.target.open; }, true);
 $("#view").addEventListener("submit", (e) => {
+  if (e.target.id === "many-form") {
+    e.preventDefault();
+    addNames(e.target.names.value);
+    return;
+  }
   const f = e.target.closest("form[data-clip]");
   if (!f) return;
   e.preventDefault();
@@ -639,6 +653,178 @@ async function runFill() {
 function fillReport() {
   const rows = [...fillRun.results.values()].map((r) => ({ service: r.title, result: r.state, filled: (r.filled || []).map((k) => FILL_KEYS[k] ?? k).join(" | "), flag: r.flag || "", notes: r.notes || r.error || "", sources: (r.sources || []).join(" | ") }));
   download(`datasponge-fill-report-${today()}.csv`, toCsv(["service", "result", "filled", "flag", "notes", "sources"], rows));
+}
+
+// ---------- add many services from a pasted list ----------
+// The list lives in this browser (localStorage) so closing the tab doesn't lose it.
+const MANY_KEY = "ds_add_many";
+const many = { rows: loadMany(), running: false, stop: false, saveAs: "draft" };
+function loadMany() {
+  try { return JSON.parse(localStorage.getItem(MANY_KEY) || "[]"); } catch { return []; }
+}
+function saveMany() {
+  try { localStorage.setItem(MANY_KEY, JSON.stringify(many.rows)); } catch {}
+}
+// Split on new lines, bullets, numbering, commas, and semicolons.
+function parseNames(text) {
+  return text
+    .split(/\r?\n|[;,]|\s[•·▪●◦‣–—]\s/)
+    .map((s) => s.replace(/^\s*(?:[-*•·▪●◦‣–—]+|\d+[.)]|[a-z][.)])\s*/i, "").trim())
+    .filter((s) => s.length >= 2);
+}
+const existingTitle = (name) => data.items.find((i) => i.standard === "FSS" && i.status !== "excluded" && i.record.title.toLowerCase() === name.toLowerCase());
+const MANY_STATE = {
+  new: ["unchanged", "Not looked up"], searching: ["info", "Searching…"], ready: ["update", "Ready to review"],
+  added: ["add", "Added"], problem: ["error", "Needs a person"], exists: ["unchanged", "Already listed"],
+};
+
+function manyView() {
+  const rows = many.rows;
+  const count = (st) => rows.filter((r) => r.state === st).length;
+  const pending = rows.filter((r) => ["new", "ready", "problem"].includes(r.state)).length;
+  return `<section class="panel">
+      <h2>Add Many Services</h2>
+      <p>Paste a list of organizations or services: one per line, or separated by bullets or commas. Then look them all up at once, or click any one to open it in the usual form.</p>
+      <form id="many-form" class="many-paste">
+        <textarea name="names" rows="5" placeholder="• Red Hook Initiative&#10;• Brooklyn Legal Services&#10;• NYC Sump Pump Pros"></textarea>
+        <div class="bar"><button class="btn primary" type="submit">Add to list</button><span class="spacer"></span><button class="btn" type="button" data-go="FSS">Back to Services</button></div>
+      </form>
+    </section>
+    ${rows.length ? `<section class="panel">
+      <div class="bar">
+        ${many.running
+          ? `<button class="btn danger" data-many-stop>Stop after the current searches</button>`
+          : `<button class="btn lookup" data-many-run ${pending ? "" : "disabled"}>✨ Look Up &amp; Add All (${pending})</button>`}
+        <label class="inline">Save as <select id="many-save-as" ${many.running ? "disabled" : ""}>
+          <option value="draft" ${many.saveAs === "draft" ? "selected" : ""}>Drafts (review before publishing)</option>
+          ${canPublish() ? `<option value="published" ${many.saveAs === "published" ? "selected" : ""}>Published right away</option>` : ""}
+        </select></label>
+        <span class="sub">${count("added")} added · ${count("problem")} need a person · ${count("exists")} already listed</span>
+        <span class="spacer"></span>
+        ${many.running ? "" : `<button class="link-btn" data-many-clear-done>Remove added rows</button> <button class="link-btn" data-many-clear>Clear list</button>`}
+      </div>
+      <p class="sub">Each lookup takes 20–60 seconds and costs roughly 10–30 cents. Keep this tab open while it runs. Anything it can't find or finish stays here for a person.</p>
+      <table class="table"><thead><tr><th>Organization or service</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>${rows
+        .map((r, i) => {
+          const [cls, label] = MANY_STATE[r.state];
+          return `<tr><td class="name">${esc(r.name)}</td><td><span class="pill ${cls}">${label}</span></td><td class="sub">${esc(r.note || "")}</td>
+            <td><div class="row-actions">${r.state === "added" ? (r.id ? `<button class="btn" data-edit-id="${r.id}">Open</button>` : "")
+              : r.state === "exists" ? `<button class="btn" data-edit-id="${r.id}">Open existing</button>`
+              : `<button class="btn" data-many-open="${i}" ${r.state === "searching" ? "disabled" : ""}>Open</button>`}
+            ${r.state === "searching" ? "" : `<button class="btn danger" data-many-remove="${i}" aria-label="Remove ${esc(r.name)}">×</button>`}</div></td></tr>`;
+        })
+        .join("")}</tbody></table>
+    </section>` : ""}`;
+}
+
+function addNames(text) {
+  const seen = new Set(many.rows.map((r) => r.name.toLowerCase()));
+  let added = 0;
+  for (const name of parseNames(text)) {
+    if (seen.has(name.toLowerCase())) continue;
+    seen.add(name.toLowerCase());
+    const hit = existingTitle(name);
+    many.rows.push(hit ? { name, state: "exists", id: hit.id, note: "Already in DataSponge." } : { name, state: "new" });
+    added++;
+  }
+  saveMany();
+  render();
+  flash(added ? `Added ${added} to the list.` : "Nothing new to add.");
+}
+
+// Lookup result -> a full form row for a new service.
+function rowFromLookup(name, j, status) {
+  const f = j.fields;
+  const area = areaFromIds(f.areas);
+  return {
+    status, audience: "public",
+    title: f.title || name, summary: f.summary || "",
+    service_type: f.service_type === "other" ? (f.service_type_other || "").trim().toLowerCase().replace(/\s+/g, "_") : f.service_type,
+    service_area: area.service_area, places: area.places,
+    categories: (f.categories || []).join(" | "), audiences: (f.audiences || []).join(" | "), action_stages: (f.action_stages || []).join(" | "),
+    phone: f.phone ? fixPhone(f.phone) : "", email: f.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email) ? f.email : "",
+    contact_url: f.contact_url || f.provider_url || "", provider_url: f.provider_url || "", provider_name: f.provider_name || "",
+    availability: availabilityKey(f.availability), availability_note: f.availability_note || "",
+    eligibility: f.eligibility || "", accessibility: f.accessibility || "",
+    hours: hoursText(f.open_24_7, f.weekly_hours), cost: costText(f.cost_min, f.cost_max),
+    service_languages: (f.service_languages || []).join(" | "),
+    source_url: f.source_url || f.contact_url || "", source_organization: f.source_organization || "",
+    source_checked_at: j.checked_at || today(), evidence_status: "website_documented",
+    review_due: sixMonths(), verification_status: "source_checked", languages: "en",
+  };
+}
+
+async function lookUpRow(r) {
+  r.state = "searching";
+  r.note = "";
+  saveMany();
+  render();
+  try {
+    const res = await fetch("/api/autofill", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name: r.name }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(j.error || `Lookup failed (${res.status})`);
+    r.lookup = j;
+    const row = rowFromLookup(r.name, j, many.saveAs);
+    const record = fromRow("FSS", row);
+    const errors = validate(record, many.saveAs);
+    if (Object.keys(errors).length) {
+      r.state = "problem";
+      r.note = `Looked up, but needs: ${Object.entries(errors).map(([k, m]) => `${k} ${m}`).join("; ")}. Open it to finish.`;
+      return;
+    }
+    const key = record.title.toLowerCase();
+    if (existingTitle(record.title)) {
+      Object.assign(r, { state: "exists", id: existingTitle(record.title).id, note: `Found as “${record.title}”, which is already in DataSponge.` });
+      return;
+    }
+    // Two names in one list can turn out to be the same organization.
+    const twin = many.rows.find((x) => x !== r && x.title?.toLowerCase() === key && ["added", "searching"].includes(x.state));
+    if (twin) {
+      Object.assign(r, { state: "exists", id: twin.id, note: `Same organization as “${twin.name}” in this list (found as “${record.title}”).` });
+      return;
+    }
+    r.title = record.title;
+    const saved = await rpc("fc_save_record", { doc: record, target: many.saveAs, record_audience: "public", expected_revision: null });
+    Object.assign(r, { state: "added", id: saved.id, note: `${saved.status === "published" ? "Published" : "Saved as a draft"} as “${record.title}”.${j.fields.notes ? ` Check: ${j.fields.notes}` : ""}` });
+    delete r.lookup;
+  } catch (err) {
+    r.state = "problem";
+    r.note = err.message;
+  } finally {
+    saveMany();
+    render();
+  }
+}
+
+async function runMany() {
+  if (many.running) return;
+  const queue = many.rows.filter((r) => ["new", "ready", "problem"].includes(r.state));
+  if (!queue.length) return;
+  if (!confirm(`Look up ${queue.length} services on the web and save each one as ${many.saveAs === "published" ? "published" : "a draft"}?`)) return;
+  Object.assign(many, { running: true, stop: false });
+  render();
+  const worker = async () => {
+    while (queue.length && !many.stop) await lookUpRow(queue.shift());
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  many.running = false;
+  await refresh().catch(() => {});
+  render();
+  flash(many.stop ? "Stopped. Everything added so far is saved." : "Done. Rows marked “Needs a person” are waiting for you.");
+}
+
+// Open one row in the regular Add a service form, filled from its lookup if there is one.
+function openManyRow(i) {
+  const r = many.rows[i];
+  openEditor("FSS");
+  editing.manyIndex = i;
+  const form = $("#editor-form");
+  form.elements.title.value = r.name;
+  if (r.lookup) fillFromLookup(r.lookup);
 }
 
 // ---------- editor ----------
@@ -932,6 +1118,11 @@ $("#editor-form").onsubmit = async (e) => {
   $("#editor-error").textContent = "";
   try {
     const res = await rpc("fc_save_record", { doc: record, target: status, record_audience: audience, expected_revision: item?.rev ?? null });
+    if (editing.manyIndex != null && many.rows[editing.manyIndex]) {
+      Object.assign(many.rows[editing.manyIndex], { state: "added", id: res.id, note: `${res.status === "published" ? "Published" : "Saved as a draft"} as “${record.title}”.` });
+      delete many.rows[editing.manyIndex].lookup;
+      saveMany();
+    }
     $("#editor").close();
     await refresh();
     render();

@@ -409,3 +409,13 @@ export function hoursText(open247, list) {
   const days = Object.fromEntries((list ?? []).filter((d) => /^\d{2}:\d{2}$/.test(d.open) && /^\d{2}:\d{2}$/.test(d.close)).map((d) => [d.day, [d.open, d.close]]));
   return Object.keys(days).length ? formatHours(days) : "";
 }
+
+// Area picks (place ids) -> saved text, same as the picker writes.
+export function areaFromIds(ids) {
+  const known = (ids ?? []).filter((id) => byId.has(id));
+  if (!known.length) return { service_area: "", places: "" };
+  if (known.includes("citywide")) return { service_area: "Citywide", places: "New York City" };
+  return { service_area: areaText(known), places: known.map((id) => byId.get(id).name).join(" | ") };
+}
+// Lookup's yes/no/maybe -> availability key.
+export const availabilityKey = (answer) => ({ no: "closed", maybe: "request_subject_to_capacity", unsure: "request_subject_to_capacity" })[answer] ?? "listed_contact_provider";
