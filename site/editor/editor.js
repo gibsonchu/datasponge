@@ -859,7 +859,11 @@ if (!cfg.url || !cfg.key) {
   $("#login-msg").textContent = "This site isn't connected to a DataSponge database yet (site/config.json).";
 } else {
   const type = takeHashSession();
-  if (type === "recovery") show("set-password");
+  if (type === "recovery" || type === "invite") {
+    // Invited colleagues and password resets both choose their own password here.
+    $("#set-password h1").textContent = type === "invite" ? "Welcome to DataSponge. Choose a password" : "Choose a new password";
+    show("set-password");
+  }
   else if (session) start().catch((err) => { show("login"); $("#login-msg").textContent = err.message; });
   else show("login");
 }
