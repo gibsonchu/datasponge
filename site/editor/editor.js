@@ -21,7 +21,7 @@ const NAMES = {
   FRS: { one: "answer or resource", many: "Answers & resources", add: "Add an answer or resource" },
   FMS: { one: "clip", many: "Clips" },
 };
-const GROUPS = { visibility: "Visibility", basics: "Basics", where: "Where", who: "Who it's for & topics", contact: "Contact", details: "Details", source: "Source & review" };
+const GROUPS = { basics: "Basics", where: "Where", who: "Who it's for & topics", contact: "Contact", details: "Details", source: "Source & review", visibility: "Visibility" };
 const STATUS_LABEL = { published: "Published", draft: "Draft", hidden: "Hidden" };
 const AUDIENCE_LABEL = { public: "Public", internal: "AI-only" };
 const SORTS = { new: "Last updated (newest)", old: "Last updated (oldest)", az: "Name (A–Z)", za: "Name (Z–A)" };
@@ -542,6 +542,9 @@ function fieldHtml(c, std, value, isNew) {
     const dl = c.suggest ? ` list="dl-${c.key}"` : "";
     input = `<input id="${id}" name="${c.key}" type="${type}" value="${esc(value)}"${dl}>${c.suggest ? `<datalist id="dl-${c.key}">${c.suggest.map((s) => `<option value="${esc(s)}">`).join("")}</datalist>` : ""}`;
   }
+  if (c.key === "title" && std === "FSS" && canPublish()) {
+    input = `<div class="lookup-row">${input}<button type="button" class="btn lookup" id="lookup">✨ Look it up</button></div>`;
+  }
   return `<label class="field ${wide ? "wide" : ""}" data-field="${c.key}" for="${id}"><span>${esc(labelOf(c, std))}${req}</span>${input}${hint}<span class="err"></span></label>`;
 }
 function openEditor(std, item = null) {
@@ -562,6 +565,82 @@ function openEditor(std, item = null) {
   $("#editor").showModal();
   $("#editor-body [data-field=title] input")?.focus();
 }
+// ---------- AI lookup (services) ----------
+// Text fields the lookup can fill, by form key.
+const LOOKUP_TEXT = ["title", "provider_name", "summary", "service_type", "service_area", "phone", "email", "contact_url", "provider_url", "availability", "eligibility", "cost", "hours", "accessibility", "source_url", "source_organization"];
+const LOOKUP_LISTS = ["categories", "audiences", "action_stages"];
+
+async function lookUp() {
+  const form = $("#editor-form");
+  const btn = $("#lookup");
+  const name = form.elements.title.value.trim();
+  const box = $("#lookup-result") || $("#editor-body").insertAdjacentElement("afterbegin", Object.assign(document.createElement("div"), { id: "lookup-result" }));
+  if (name.length < 3) {
+    box.className = "lookup-note bad";
+    box.textContent = "Type the service or organization name first, then click Look it up.";
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = "Searching…";
+  box.className = "lookup-note";
+  box.textContent = `Searching the web for “${name}”. This usually takes 20–60 seconds.`;
+  try {
+    const r = await fetch("/api/autofill", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    const j = await r.json().catch(() => ({ error: `Lookup failed (${r.status}).` }));
+    if (!r.ok) throw new Error(j.error || `Lookup failed (${r.status}).`);
+    fillFromLookup(j);
+  } catch (err) {
+    box.className = "lookup-note bad";
+    box.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "✨ Look it up";
+  }
+}
+
+function fillFromLookup({ fields, sources = [], checked_at }) {
+  const form = $("#editor-form");
+  const isNew = !editing.item;
+  const filled = [];
+  const set = (key, value) => {
+    const el = form.elements[key];
+    if (!el || value == null || value === "" || el.disabled) return;
+    if (!isNew && el.value.trim()) return; // editing: never overwrite what's there
+    el.value = value;
+    filled.push(key);
+  };
+  for (const k of LOOKUP_TEXT) set(k, fields[k]);
+  set("service_languages", (fields.service_languages || []).join(" | "));
+  for (const k of LOOKUP_LISTS) {
+    const boxes = [...form.querySelectorAll(`input[name="${k}"]`)];
+    if (!fields[k]?.length || (!isNew && boxes.some((b) => b.checked))) continue;
+    for (const b of boxes) b.checked = fields[k].includes(b.value);
+    filled.push(k);
+  }
+  if (fields.source_url) {
+    set("source_checked_at", checked_at);
+    if (isNew) form.elements.evidence_status.value = "website_documented";
+  }
+  // Looked-up details start as a draft until someone has checked them.
+  const status = [...form.querySelectorAll('[name="status"]')].find((x) => !x.disabled);
+  if (isNew && status && status.tagName === "SELECT") { status.value = "draft"; filled.push("status"); }
+  for (const k of filled) form.querySelector(`[data-field="${k}"]`)?.classList.add("ai-filled");
+  const box = $("#lookup-result");
+  box.className = "lookup-note ok";
+  box.innerHTML = `<strong>Filled ${filled.length} fields from a web search.</strong> Check every highlighted field against the sources before publishing. It's set to <em>Draft</em> until you change Status.${
+    fields.notes ? `<p><strong>Double-check:</strong> ${esc(fields.notes)}</p>` : ""
+  }${sources.length ? `<p class="sub">Sources: ${sources.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noreferrer">${esc(s.title)}</a>`).join(" · ")}</p>` : ""}`;
+  box.scrollIntoView({ block: "start", behavior: "smooth" });
+}
+
+$("#editor-body").addEventListener("click", (e) => { if (e.target.closest("#lookup")) lookUp(); });
+$("#editor-body").addEventListener("input", (e) => e.target.closest(".ai-filled")?.classList.remove("ai-filled"));
+$("#editor-body").addEventListener("change", (e) => e.target.closest(".ai-filled")?.classList.remove("ai-filled"));
+
 function readForm() {
   const form = $("#editor-form");
   const row = {};

@@ -1,14 +1,40 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "redirects": [
-    { "source": "/workspace", "destination": "/editor/", "permanent": true },
-    { "source": "/workspace/(.*)", "destination": "/editor/", "permanent": true },
-    { "source": "/editor", "destination": "/editor/", "permanent": false }
+    {
+      "source": "/workspace",
+      "destination": "/editor/",
+      "permanent": true
+    },
+    {
+      "source": "/workspace/(.*)",
+      "destination": "/editor/",
+      "permanent": true
+    },
+    {
+      "source": "/editor",
+      "destination": "/editor/",
+      "permanent": false
+    }
   ],
   "headers": [
-    { "source": "/editor/(.*)", "headers": [
-      { "key": "X-Frame-Options", "value": "DENY" },
-      { "key": "X-Robots-Tag", "value": "noindex" }
-    ] }
-  ]
+    {
+      "source": "/editor/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
+    }
+  ],
+  "functions": {
+    "api/autofill.js": {
+      "maxDuration": 120
+    }
+  }
 }

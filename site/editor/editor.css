@@ -133,6 +133,18 @@ dialog#editor { width: min(780px, calc(100% - 24px)); max-height: calc(100vh - 2
 .checks input { width: auto; margin: 0; accent-color: var(--ink); }
 .checks label:has(input:checked) { background: var(--ink); border-color: var(--ink); color: #fff; }
 
+/* AI lookup */
+.lookup-row { display: flex; gap: 8px; }
+.lookup-row input { flex: 1; min-width: 0; }
+.btn.lookup { flex: none; background: var(--mint); border-color: var(--teal); white-space: nowrap; }
+.btn.lookup:hover { border-color: var(--ink); }
+.lookup-note { margin: 14px 0 0; padding: 12px 14px; border-radius: 10px; background: var(--blue-soft); color: var(--ink); font-size: 14px; font-weight: 400; }
+.lookup-note.ok { background: var(--green-soft); }
+.lookup-note.bad { background: var(--red-soft); color: var(--red); font-weight: 600; }
+.lookup-note p { margin: 6px 0 0; }
+.field.ai-filled input, .field.ai-filled select, .field.ai-filled textarea, .field.ai-filled .checks { background: #fffbea; border-color: #e3c56b; }
+.field.ai-filled > span:first-child::after { content: " · from web search"; font-weight: 400; font-size: 12px; color: var(--amber); }
+
 /* Panels (import, inbox, people) */
 .panel { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); }
 .panel h2 { margin: 0 0 6px; font-size: 20px; }
