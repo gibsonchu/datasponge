@@ -12,7 +12,7 @@ DataSponge soaks up flood information from many sources (organizations, city pro
 
 **[DataSponge Editor](https://datasponge.vercel.app/editor/)** is where people update that data without touching code: add or edit a listing, publish or hide it, choose Public or AI-only, upload a spreadsheet, and review clips. A change published there appears on Local Help the next time someone loads the page.
 
-The [DataSponge site](https://datasponge.vercel.app) also lets anyone browse the published catalog and the standards. DataSponge defines practical ways to organize, publish, and exchange flood information, and governments, researchers, community groups, and developers can implement the specifications independently.
+The [DataSponge site](https://datasponge.vercel.app) explains the project and links to the editor. Developers can read the published catalog directly (see `site/config.json` for the endpoint and publishable key). DataSponge defines practical ways to organize, publish, and exchange flood information, and governments, researchers, community groups, and developers can implement the specifications independently.
 
 ## Three draft standards
 
@@ -44,7 +44,7 @@ npm test
 npm run preview
 ```
 
-Open `http://localhost:8080`. The example catalog contains **three explicitly synthetic records**; switch to the published catalog to see live records. Search, collection/place/topic filters, record details, JSON download, standards downloads, and the published catalog adapter are included.
+Open `http://localhost:8080` for the About page and `http://localhost:8080/editor/` for the editor. Search, collection/place/topic filters, record details, JSON download, standards downloads, and the published catalog adapter are included.
 
 To connect your own published catalog, configure `site/config.json` with a Supabase project URL and **publishable** key. Never put a secret/service-role key there. Read the database setup instructions first. This repository does not contain the steward's unreviewed 60-record research corpus, personal administrator enrollment, or credentials.
 

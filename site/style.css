@@ -7,3 +7,4 @@
 .hidden{display:none!important}.access-form{max-width:460px;margin-top:28px}.access-form label{display:block;font-weight:600}.access-form input{display:block;width:100%;padding:13px;margin:9px 0 16px;border:1px solid #9eb1be;background:white}.access-form button{border:0;font:inherit;cursor:pointer}.access-form button:disabled{opacity:.5}
 
 nav a.edit-link{color:var(--ink);background:var(--mint);padding:8px 14px;border-radius:999px;font-weight:600;text-decoration:none}nav a.edit-link:hover{background:#d6faef}
+.about-home{max-width:860px;padding:72px 0 40px}.about-home h1{margin-bottom:24px}.about-home .lede{font-size:20px;line-height:1.6;color:var(--ink);max-width:760px}.about-home .lede a{color:var(--blue)}.about-home .primary-link{margin-top:28px;font-weight:600}footer a{color:var(--ink)}footer small a{font-weight:400}
