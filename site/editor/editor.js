@@ -16,7 +16,7 @@ import {
 import {
   serviceTypeHtml, readServiceType, setServiceType, areaHtml, readArea, setAreas, hoursHtml, readHours, setHours, hoursEvents, copyWeekdays,
   costHtml, readCost, setCost, markDirty, topicsHtml, stagesHtml, readStages, setStages, chipsHtml, setChips, chipEvents,
-  availabilityHtml, readAvailability, setAvailability, detailsFor, DETAIL_KEYS,
+  availabilityHtml, readAvailability, setAvailability, detailsFor, DETAIL_KEYS, OPTIONAL_DETAILS, topicGroupEvents, syncTopicGroups,
 } from "./widgets.js";
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -571,10 +571,12 @@ function fieldHtml(c, std, value, isNew) {
 function openEditor(std, item = null) {
   editing = { std, item, allowDuplicate: false };
   showAllDetails = false;
-  const row = item?.row ?? { status: canPublish() ? "published" : "draft", review_due: std === "FSS" ? sixMonths() : "" };
+  const row = item?.row ?? { status: canPublish() ? "published" : "draft", review_due: std === "FSS" ? sixMonths() : "", source_checked_at: today() };
   editing.row = row;
+  editing.extra = {}; // values the form doesn't show (e.g. a looked-up source link)
+  editing.opened = new Set(); // optional details someone chose to add
   $("#editor-title").textContent = item ? `Edit ${NAMES[std].one}` : NAMES[std].add;
-  const cols = columnsFor(std);
+  const cols = columnsFor(std).filter((c) => !(c.formHidden && std === "FSS"));
   let html = Object.keys(GROUPS)
     .map((g) => [g, cols.filter((c) => c.group === g)])
     .filter(([, cs]) => cs.length)
@@ -638,6 +640,7 @@ function fillFromLookup({ fields, sources = [], checked_at }) {
   const blank = (key) => isNew || !form.elements[key]?.value?.trim();
   const set = (key, value) => {
     const el = form.elements[key];
+    if (!el && value && ["provider_name", "provider_url", "source_url"].includes(key) && (isNew || !editing.row[key])) { editing.extra[key] = value; return; }
     if (!el || value == null || value === "" || el.disabled || !blank(key)) return;
     el.value = value;
     filled.push(key);
@@ -652,13 +655,14 @@ function fillFromLookup({ fields, sources = [], checked_at }) {
     for (const b of boxes) b.checked = fields[k].includes(b.value);
     filled.push(k);
   }
+  syncTopicGroups(form);
   if (isNew || !readServiceType(form)) { setServiceType(form, fields.service_type, fields.service_type_other); filled.push("service_type"); }
   const areaPicked = [...form.querySelectorAll('input[name="area"]:checked')].length;
   if (fields.areas?.length && (isNew || !areaPicked)) { setAreas(form, fields.areas); filled.push("service_area"); }
   if ((fields.open_24_7 || fields.weekly_hours?.length) && (isNew || !readHours(form))) { setHours(form, fields.open_24_7, fields.weekly_hours); filled.push("hours"); }
   if ((isNew || !readCost(form)) && setCost(form, fields.cost_min, fields.cost_max)) filled.push("cost");
   if (fields.source_url) {
-    set("source_checked_at", checked_at);
+    if (!isNew) set("source_checked_at", checked_at);
     if (isNew) form.elements.evidence_status.value = "website_documented";
   }
   showDetailsFor();
@@ -683,6 +687,12 @@ body.addEventListener("click", (e) => {
   if (e.target.closest("#lookup")) lookUp();
   if (e.target.closest("[data-copy-weekdays]")) copyWeekdays($("#editor-form"));
   if (e.target.closest("[data-show-all]")) { showAllDetails = true; showDetailsFor(); }
+  const add = e.target.closest("[data-add-detail]");
+  if (add) {
+    editing.opened.add(add.dataset.addDetail);
+    showDetailsFor();
+    $(`#editor-body [data-field="${add.dataset.addDetail}"] input, #editor-body [data-field="${add.dataset.addDetail}"] textarea`)?.focus();
+  }
   chipEvents(e);
 });
 body.addEventListener("keydown", chipEvents);
@@ -691,7 +701,7 @@ for (const type of ["input", "change"]) {
   body.addEventListener(type, (e) => {
     e.target.closest(".ai-filled")?.classList.remove("ai-filled");
     markDirty(e);
-    if (type === "change") hoursEvents(e);
+    if (type === "change") { hoursEvents(e); topicGroupEvents(e); }
     if (type === "change" && e.target.name === "service_type") showDetailsFor();
   });
 }
@@ -705,23 +715,33 @@ function showDetailsFor() {
   const wanted = new Set(detailsFor(type));
   const row = readForm();
   let hidden = 0;
+  const optional = new Map(OPTIONAL_DETAILS);
+  const adders = [];
   for (const k of DETAIL_KEYS) {
     const el = form.querySelector(`[data-field="${k}"]`);
     if (!el) continue;
-    const show = showAllDetails || !type || wanted.has(k) || Boolean(String(row[k] ?? "").trim());
+    const hasValue = Boolean(String(row[k] ?? "").trim());
+    if (optional.has(k)) {
+      el.hidden = !(hasValue || editing.opened.has(k));
+      if (el.hidden) adders.push(`<button type="button" class="btn small" data-add-detail="${k}">+ ${optional.get(k)}</button>`);
+      continue;
+    }
+    const show = showAllDetails || !type || wanted.has(k) || hasValue;
     el.hidden = !show;
     if (!show) hidden++;
   }
   const note = $("#details-note");
-  note.hidden = !type;
-  note.innerHTML = type
+  const intro = type
     ? `Showing the details that usually matter for <strong>${esc(form.elements.service_type.selectedOptions[0]?.textContent ?? "this type")}</strong>.${hidden ? ` <button type="button" class="link-btn" data-show-all>Show all details (${hidden} more)</button>` : ""}`
     : "";
+  note.hidden = !intro && !adders.length;
+  note.innerHTML = `${intro}${adders.length ? `<span class="adders">${adders.join("")}</span>` : ""}`;
 }
 
 function readForm() {
   const form = $("#editor-form");
-  const row = {};
+  // Start from the record (and anything looked up) so fields the form doesn't show keep their values.
+  const row = { ...editing.row, ...editing.extra };
   for (const c of columnsFor(editing.std)) {
     if (c.group === "system") continue;
     if (c.terms && c.list) {
@@ -740,6 +760,12 @@ function readForm() {
   if (editing.std === "FSS") {
     Object.assign(row, readAvailability(form));
     if (!row.source_url?.trim()) row.source_url = row.contact_url || row.provider_url || "";
+    // Publishing from the editor is a person reviewing it: date it, once.
+    const publishing = row.status === "published" && editing.item?.status !== "published";
+    if (publishing && !row.verified_at) {
+      row.verified_at = today();
+      if (row.verification_status === "unreviewed" || !row.verification_status) row.verification_status = "reviewed";
+    }
     row.service_type = readServiceType(form);
     Object.assign(row, readArea(form));
     row.hours = readHours(form);
@@ -748,6 +774,10 @@ function readForm() {
   return row;
 }
 function showErrors(errors = {}) {
+  if (errors.source_url && editing.std === "FSS") {
+    errors.contact_url ??= "Add the website (or use Look it up) so DataSponge knows where this came from.";
+    delete errors.source_url;
+  }
   for (const f of document.querySelectorAll("#editor-body [data-field]")) {
     const msg = errors[f.dataset.field];
     f.classList.toggle("invalid", Boolean(msg));

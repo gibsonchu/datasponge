@@ -162,7 +162,7 @@ dialog#editor { width: min(780px, calc(100% - 24px)); max-height: calc(100vh - 2
 .day-row input[type=time] { padding: 6px 8px; }
 .day-row input[type=time]:disabled { opacity: 0.4; }
 .days .link-btn { justify-self: start; font-size: 13px; }
-.cost-pick { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.cost-pick { display: flex; gap: 16px; flex-wrap: nowrap; align-items: center; }
 .cost-pick label.inline { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
 .cost-pick label.inline select { min-width: 0; width: auto; }
 .cost-pick .hint { flex-basis: 100%; }
@@ -193,6 +193,16 @@ dialog#editor { width: min(780px, calc(100% - 24px)); max-height: calc(100vh - 2
 .more-review summary { cursor: pointer; font-weight: 700; color: var(--blue); }
 .more-review > .fgroup { margin-top: 10px; }
 .field[hidden] { display: none; }
+
+/* Topics: pick a kind of help, then its topics */
+.topic-groups { display: grid; gap: 6px; }
+.topic-group { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: #fff; }
+.group-check { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; cursor: pointer; }
+.group-check input { width: 18px; height: 18px; accent-color: var(--ink); }
+.sub-topics { margin: 8px 0 2px 28px; }
+.hours-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.btn.small { min-height: 32px; padding: 4px 12px; font-size: 13px; }
+.details-note .adders { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 
 /* Panels (import, inbox, people) */
 .panel { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); }

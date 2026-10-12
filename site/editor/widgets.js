@@ -139,13 +139,13 @@ export function hoursHtml(value) {
   const days = (!always && value && parseHours(value)) || {};
   const custom = value && !always && !Object.keys(days).length;
   return `<div class="hours-pick" data-widget="hours" data-orig="${esc(value ?? "")}">
-    <label class="inline-check"><input type="checkbox" name="hours_247" ${always ? "checked" : ""}> Open 24 hours, 7 days a week</label>
+    <div class="hours-top"><label class="inline-check"><input type="checkbox" name="hours_247" ${always ? "checked" : ""}> Open 24 hours, 7 days a week</label>
+      <button type="button" class="btn small" data-copy-weekdays ${always ? "hidden" : ""}>Copy Monday's hours to Tue–Fri</button></div>
     <div class="days" ${always ? "hidden" : ""}>
       ${DAYS.map(([k, l]) => `<div class="day-row"><label class="inline-check"><input type="checkbox" name="day_${k}" ${days[k] ? "checked" : ""}> ${l}</label>
         <input type="time" name="open_${k}" value="${days[k]?.[0] ?? "09:00"}" aria-label="${l} opens" ${days[k] ? "" : "disabled"}>
         <span>to</span>
         <input type="time" name="close_${k}" value="${days[k]?.[1] ?? "17:00"}" aria-label="${l} closes" ${days[k] ? "" : "disabled"}></div>`).join("")}
-      <button type="button" class="link-btn" data-copy-weekdays>Copy Monday's hours to Tue–Fri</button>
     </div>
     ${custom ? `<p class="hint">Current hours: “${esc(value)}”. They stay as written unless you change the boxes.</p>` : ""}
   </div>`;
@@ -162,6 +162,7 @@ export function setHours(form, open247, list) {
   const w = form.querySelector('[data-widget="hours"]');
   form.elements.hours_247.checked = Boolean(open247);
   w.querySelector(".days").hidden = Boolean(open247);
+  w.querySelector("[data-copy-weekdays]").hidden = Boolean(open247);
   for (const [k] of DAYS) {
     const d = list?.find((x) => x.day === k);
     form.elements[`day_${k}`].checked = Boolean(d);
@@ -173,7 +174,10 @@ export function setHours(form, open247, list) {
 export function hoursEvents(e) {
   const form = e.target.form;
   if (!form) return;
-  if (e.target.name === "hours_247") form.querySelector('[data-widget="hours"] .days').hidden = e.target.checked;
+  if (e.target.name === "hours_247") {
+    form.querySelector('[data-widget="hours"] .days').hidden = e.target.checked;
+    form.querySelector("[data-copy-weekdays]").hidden = e.target.checked;
+  }
   const m = e.target.name?.match(/^day_(\w+)$/);
   if (m) form.elements[`open_${m[1]}`].disabled = form.elements[`close_${m[1]}`].disabled = !e.target.checked;
   if (e.target.name === "service_type") form.elements.service_type_other.hidden = e.target.value !== "other";
@@ -247,12 +251,31 @@ export function topicsHtml(terms, value) {
   const label = new Map(terms.map((t) => [t.key, t.label]));
   const grouped = new Set(TOPIC_GROUPS.flatMap(([, ks]) => ks));
   const groups = [...TOPIC_GROUPS, ["Other", terms.map((t) => t.key).filter((k) => !grouped.has(k))]].filter(([, ks]) => ks.length);
-  return groups
-    .map(([g, ks]) => `<p class="pick-head">${esc(g)}</p><div class="checks">${[...ks]
-      .sort((a, b) => (label.get(a) ?? a).localeCompare(label.get(b) ?? b))
-      .map((k) => `<label><input type="checkbox" name="categories" value="${k}" ${chosen.has(k) ? "checked" : ""}>${esc(label.get(k) ?? k)}</label>`)
-      .join("")}</div>`)
-    .join("");
+  // Pick the kinds of help first; each one opens its specific topics.
+  return `<div class="topic-groups">${groups
+    .map(([g, ks], i) => {
+      const open = ks.some((k) => chosen.has(k));
+      return `<div class="topic-group"><label class="group-check"><input type="checkbox" name="topic_group" value="${i}" ${open ? "checked" : ""}>${esc(g)}</label>
+        <div class="checks sub-topics" data-topic-group="${i}" ${open ? "" : "hidden"}>${[...ks]
+          .sort((a, b) => (label.get(a) ?? a).localeCompare(label.get(b) ?? b))
+          .map((k) => `<label><input type="checkbox" name="categories" value="${k}" ${chosen.has(k) ? "checked" : ""}>${esc(label.get(k) ?? k)}</label>`)
+          .join("")}</div></div>`;
+    })
+    .join("")}</div>`;
+}
+export function topicGroupEvents(e) {
+  if (e.target.name !== "topic_group") return;
+  const box = e.target.closest(".topic-group").querySelector(".sub-topics");
+  box.hidden = !e.target.checked;
+  if (!e.target.checked) for (const c of box.querySelectorAll("input")) c.checked = false;
+}
+// After topics are ticked in code (web search), open their groups.
+export function syncTopicGroups(form) {
+  for (const g of form.querySelectorAll(".topic-group")) {
+    const any = [...g.querySelectorAll('input[name="categories"]')].some((c) => c.checked);
+    g.querySelector('input[name="topic_group"]').checked = any;
+    g.querySelector(".sub-topics").hidden = !any;
+  }
 }
 
 // ---------- when: before / during / after the flood ----------
@@ -322,14 +345,15 @@ export function chipEvents(e) {
 }
 
 // ---------- taking new people? ----------
-const YES = ["listed_contact_provider", "confirmed_available", "request_subject_to_capacity", "deadline_listed", "expression_of_interest", "event_dependent"];
+const YES = ["listed_contact_provider", "confirmed_available", "deadline_listed", "expression_of_interest", "event_dependent"];
+const MAYBE = ["request_subject_to_capacity", "intake_unconfirmed"];
 const NO = ["temporarily_unavailable", "closed", "historical"];
-const answerOf = (key) => (YES.includes(key) ? "yes" : NO.includes(key) ? "no" : key ? "unsure" : "yes");
+const answerOf = (key) => (YES.includes(key) ? "yes" : NO.includes(key) ? "no" : MAYBE.includes(key) ? "maybe" : "yes");
 export function availabilityHtml(key, note) {
   const a = answerOf(key);
   return `<div class="avail-pick" data-widget="availability" data-orig="${esc(key ?? "")}">
     <div class="seg-row" role="radiogroup" aria-label="Taking new people?">
-      ${[["yes", "Yes"], ["no", "No"], ["unsure", "Not sure"]].map(([v, l]) => `<label class="seg-opt"><input type="radio" name="avail_answer" value="${v}" ${a === v ? "checked" : ""}><span>${l}</span></label>`).join("")}
+      ${[["yes", "Yes"], ["no", "No"], ["maybe", "Maybe"]].map(([v, l]) => `<label class="seg-opt"><input type="radio" name="avail_answer" value="${v}" ${a === v ? "checked" : ""}><span>${l}</span></label>`).join("")}
     </div>
     <input name="availability_note" value="${esc(note ?? "")}" placeholder="Details (optional), e.g. Waitlist until March" aria-label="Availability details">
   </div>`;
@@ -339,11 +363,11 @@ export function readAvailability(form) {
   const answer = form.querySelector('input[name="avail_answer"]:checked')?.value ?? "yes";
   const orig = w.dataset.orig;
   // Keep the precise original value when the answer didn't change.
-  const availability = answerOf(orig) === answer && orig ? orig : { yes: "listed_contact_provider", no: "closed", unsure: "intake_unconfirmed" }[answer];
+  const availability = answerOf(orig) === answer && orig ? orig : { yes: "listed_contact_provider", no: "closed", maybe: "request_subject_to_capacity" }[answer];
   return { availability, availability_note: form.elements.availability_note.value.trim() };
 }
 export function setAvailability(form, answer, note) {
-  const r = form.querySelector(`input[name="avail_answer"][value="${answer}"]`);
+  const r = form.querySelector(`input[name="avail_answer"][value="${answer === "unsure" ? "maybe" : answer}"]`);
   if (r) r.checked = true;
   if (note) form.elements.availability_note.value = note;
 }
@@ -354,10 +378,12 @@ const KIND = {
   program: ["financial_help", "insurance_help", "small_business_support", "workforce", "green_infrastructure", "climate_resilience"],
 };
 const DETAILS_FOR = {
-  contractor: ["availability", "cost", "hours", "service_languages", "accessibility"],
-  program: ["availability", "eligibility", "deadline", "cost", "hours", "service_languages"],
-  organization: ["availability", "eligibility", "cost", "hours", "service_languages", "accessibility"],
+  contractor: ["availability", "cost", "hours", "service_languages"],
+  program: ["availability", "eligibility", "cost", "hours", "service_languages"],
+  organization: ["availability", "eligibility", "cost", "hours", "service_languages"],
 };
+// Shown only when they have a value or someone adds them.
+export const OPTIONAL_DETAILS = [["deadline", "Application Deadline"], ["accessibility", "Accessibility"]];
 export const DETAIL_KEYS = ["availability", "eligibility", "cost", "hours", "deadline", "service_languages", "accessibility"];
 export function kindOf(type) {
   if (!type) return null;
@@ -365,5 +391,5 @@ export function kindOf(type) {
 }
 export function detailsFor(type) {
   const k = kindOf(type);
-  return k ? DETAILS_FOR[k] : DETAIL_KEYS;
+  return k ? DETAILS_FOR[k] : DETAIL_KEYS.filter((d) => !OPTIONAL_DETAILS.some(([o]) => o === d));
 }
