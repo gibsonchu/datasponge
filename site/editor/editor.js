@@ -255,7 +255,9 @@ function go(v, fromHash = false) {
     if (!SORTS[lists[v].sort]) lists[v].sort = "new";
   }
   saveHash();
-  for (const b of document.querySelectorAll("[data-view]")) b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current");
+  // Pages opened from a tab (Upload CSV, Add Many, Fill Missing Details) keep that tab highlighted.
+  const tab = { import: ui.importStd, many: "FSS", fill: "FSS" }[v] ?? v;
+  for (const b of document.querySelectorAll("[data-view]")) b.dataset.view === tab ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current");
   render();
 }
 $(".tabs").onclick = (e) => {
@@ -276,6 +278,12 @@ const fmtDate = (s) => (s ? new Date(s.length === 10 ? `${s}T12:00:00` : s).toLo
 const byName = (a, b) => a.record.title.localeCompare(b.record.title, "en", { sensitivity: "base", numeric: true });
 const byUpdated = (a, b) => (a.updated_at ?? "").localeCompare(b.updated_at ?? "");
 const SORTERS = { az: byName, za: (a, b) => byName(b, a), old: (a, b) => byUpdated(a, b) || byName(a, b), new: (a, b) => byUpdated(b, a) || byName(a, b) };
+const ICONS = {
+  edit: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg>`,
+  trash: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg>`,
+};
+const iconBtn = (icon, label, attrs, cls = "") => `<button type="button" class="icon-action ${cls}" ${attrs} aria-label="${esc(label)}" title="${esc(label)}">${ICONS[icon]}</button>`;
+
 function stateControls(i) {
   const status = canPublish()
     ? `<select class="state ${i.status}" data-status-of="${i.id}" aria-label="Status of ${esc(i.record.title)}">${STATUSES.map((k) => `<option value="${k}" ${i.status === k ? "selected" : ""}>${STATUS_LABEL[k]}</option>`).join("")}</select>`
@@ -283,7 +291,7 @@ function stateControls(i) {
   const audience = canPublish()
     ? `<select class="state ${i.audience}" data-audience-of="${i.id}" aria-label="Who can see ${esc(i.record.title)}">${AUDIENCES.map((k) => `<option value="${k}" ${i.audience === k ? "selected" : ""}>${AUDIENCE_LABEL[k]}</option>`).join("")}</select>`
     : `<span class="pill state ${i.audience}">${AUDIENCE_LABEL[i.audience]}</span>`;
-  const pending = i.pendingChanges ? `<span class="pill info" title="The public version is older. Publish to update it.">Unpublished changes</span>` : "";
+  const pending = i.pendingChanges ? `<span class="pending-dot" title="Unpublished changes: the public version is older. Publish to update it." aria-label="Unpublished changes"></span>` : "";
   return `<div class="state-stack">${status}${audience}${pending}</div>`;
 }
 function publicNote(i) {
@@ -321,12 +329,13 @@ function listView(std) {
       const r = i.row;
       const note = publicNote(i);
       const sub = std === "FSS" ? [r.service_area, r.phone].filter(Boolean).join(" · ") : [r.resource_type === "faq_answer" ? "Quick answer" : r.resource_type.replaceAll("_", " "), r.audiences.replaceAll(" | ", ", ")].filter(Boolean).join(" · ");
+      const types = typesOf(i).map((t) => typeLabel(std, t)).join(", ");
       return `<tr>
-        <td><div class="name">${esc(r.title)}</div><div class="sub">${esc(sub)}</div>${note ? `<span class="pill warn">${esc(note)}</span>` : ""}</td>
-        <td>${esc(typesOf(i).map((t) => typeLabel(std, t)).join(", "))}</td>
+        <td class="clip-cell" title="${esc([r.title, sub, note].filter(Boolean).join(" · "))}"><span class="name">${esc(r.title)}</span>${sub ? ` <span class="sub">· ${esc(sub)}</span>` : ""}${note ? ` <span class="pill warn">${esc(note)}</span>` : ""}</td>
+        <td class="clip-cell" title="${esc(types)}">${esc(types)}</td>
         <td>${stateControls(i)}</td>
-        <td class="sub">${esc(fmtDate(i.updated_at))}</td>
-        <td><div class="row-actions"><button class="btn" data-edit="${i.id}">Edit</button>${canPublish() ? `<button class="btn danger" data-trash="${i.id}" aria-label="Move ${esc(r.title)} to trash">Trash</button>` : ""}</div></td></tr>`;
+        <td class="sub nowrap">${esc(fmtDate(i.updated_at))}</td>
+        <td><div class="row-actions">${iconBtn("edit", `Edit ${r.title}`, `data-edit="${i.id}"`)}${canPublish() ? iconBtn("trash", `Move ${r.title} to trash`, `data-trash="${i.id}"`, "danger") : ""}</div></td></tr>`;
     })
     .join("");
   const nameSort = l.sort === "az" ? "ascending" : l.sort === "za" ? "descending" : "none";
@@ -351,9 +360,9 @@ function listView(std) {
       <span class="sub" aria-live="polite">Showing ${items.length} of ${all.length}</span>
       ${filtered ? `<button class="link-btn" data-clear-filters>Clear Filters</button>` : ""}
     </div>
-    ${items.length ? `<table class="table"><thead><tr>
+    ${items.length ? `<table class="table compact"><colgroup><col class="c-name"><col class="c-type"><col class="c-state"><col class="c-date"><col class="c-act"></colgroup><thead><tr>
       <th aria-sort="${nameSort}"><button class="th-sort" data-sort="${l.sort === "az" ? "za" : "az"}">${std === "FSS" ? "Service" : "Title"}${arrow(nameSort)}</button></th>
-      <th>${typeName}</th><th>Status &amp; visibility</th>
+      <th>${typeName}</th><th>Status &amp; Visibility</th>
       <th aria-sort="${dateSort}"><button class="th-sort" data-sort="${l.sort === "new" ? "old" : "new"}">Updated${arrow(dateSort)}</button></th>
       <th></th></tr></thead><tbody>${rows}</tbody></table>`
       : `<div class="empty"><h2>No ${NAMES[std].many.toLowerCase()} match.</h2><p>${filtered ? "Try clearing the filters." : "Add one to get started."}</p>${filtered ? `<button class="btn primary" data-clear-filters>Clear Filters</button>` : ""}</div>`}`;
@@ -381,7 +390,7 @@ function clipsView() {
         return `<tr><td><div class="name">${esc(d.title)}</div><div class="sub">${esc(DEPTHS[depth] || "")}${d.media?.creator ? ` · ${esc(d.media.creator)}` : ""}</div></td>
           <td>${esc(d.places?.[0]?.name || "")}<div class="sub">${esc((WHERE[loc] || "").split(" (")[0])}</div></td>
           <td>${stateControls(i)}</td><td class="sub">${esc(fmtDate(d.media?.capture_date))}</td>
-          <td><div class="row-actions"><a class="btn" href="${CLIPS_URL}?clip=${i.id}" target="_blank" rel="noreferrer">View ↗</a><a class="btn" href="${esc(d.source.url)}" target="_blank" rel="noreferrer">Original ↗</a>${canPublish() ? `<button class="btn danger" data-trash="${i.id}">Trash</button>` : ""}</div></td></tr>`;
+          <td><div class="row-actions"><a class="btn" href="${CLIPS_URL}?clip=${i.id}" target="_blank" rel="noreferrer">View ↗</a><a class="btn" href="${esc(d.source.url)}" target="_blank" rel="noreferrer">Original ↗</a>${canPublish() ? iconBtn("trash", `Move ${d.title} to trash`, `data-trash="${i.id}"`, "danger") : ""}</div></td></tr>`;
       })
       .join("")}</tbody></table>`
       : `<div class="empty"><h2>No clips yet.</h2><p>Approved submissions from Flood Clips appear here.</p>${pending ? `<button class="btn primary" data-go="inbox">Review Submissions</button>` : ""}</div>`}`;
@@ -487,6 +496,7 @@ $("#view").addEventListener("change", (e) => {
 $("#view").addEventListener("click", async (e) => {
   const t = e.target.closest("button");
   if (!t) return;
+  if (t.dataset.go === "import" && (view === "FSS" || view === "FRS")) { ui.importStd = view; ui.importResult = null; ui.importFile = null; ui.ignored = []; }
   if (t.dataset.go) return go(t.dataset.go);
   if ("fillStart" in t.dataset) return runFill();
   if ("fillStop" in t.dataset) { fillRun.stop = true; t.disabled = true; return; }

@@ -207,6 +207,28 @@ dialog#editor { width: min(780px, calc(100% - 24px)); max-height: calc(100vh - 2
 .many-paste { display: grid; gap: 10px; }
 .many-paste textarea { min-height: 120px; }
 
+/* Compact one-line rows */
+.table.compact { table-layout: fixed; }
+.table.compact td { vertical-align: middle; padding: 8px 12px; }
+.table.compact .clip-cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.table.compact .sub { font-size: 13px; }
+.table.compact .pill.warn { font-size: 11px; padding: 1px 7px; }
+.table.compact col.c-name { width: auto; }
+.table.compact col.c-type { width: 17%; }
+.table.compact col.c-state { width: 236px; }
+.table.compact col.c-date { width: 104px; }
+.table.compact col.c-act { width: 88px; }
+.table.compact .state-stack { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+.table.compact .state { font-size: 12px; padding: 3px 6px; }
+.nowrap { white-space: nowrap; }
+.pending-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--blue); flex: none; }
+.icon-action { width: 32px; height: 32px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); padding: 0; }
+.icon-action svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.icon-action:hover { border-color: var(--ink); }
+.icon-action.danger { color: var(--red); }
+.icon-action.danger:hover { border-color: var(--red); background: var(--red-soft); }
+.row-actions { flex-wrap: nowrap; }
+
 /* Panels (import, inbox, people) */
 .panel { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); }
 .panel h2 { margin: 0 0 6px; font-size: 20px; }
@@ -250,7 +272,9 @@ dialog#editor { width: min(780px, calc(100% - 24px)); max-height: calc(100vh - 2
 .log-list time { color: var(--muted); font-size: 13px; display: block; }
 
 @media (max-width: 800px) {
-  .table thead { display: none; }
+  .table thead, .table colgroup { display: none; }
+  .table.compact { table-layout: auto; }
+  .table.compact .clip-cell { white-space: normal; }
   .table, .table tbody, .table tr, .table td { display: block; }
   .table tr { border-bottom: 1px solid var(--line); padding: 8px 0; }
   .table td { border: 0; padding: 4px 12px; }
