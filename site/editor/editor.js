@@ -16,7 +16,7 @@ import {
 import {
   serviceTypeHtml, readServiceType, setServiceType, areaHtml, readArea, setAreas, hoursHtml, readHours, setHours, hoursEvents, copyWeekdays,
   costHtml, readCost, setCost, markDirty, topicsHtml, stagesHtml, readStages, setStages, chipsHtml, setChips, chipEvents,
-  availabilityHtml, readAvailability, setAvailability, detailsFor, DETAIL_KEYS, OPTIONAL_DETAILS, topicGroupEvents, syncTopicGroups,
+  availabilityHtml, readAvailability, setAvailability, detailsFor, DETAIL_KEYS, OPTIONAL_DETAILS, topicGroupEvents, syncTopicGroups, costText, hoursText,
 } from "./widgets.js";
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -262,7 +262,7 @@ $(".tabs").onclick = (e) => {
 };
 function render() {
   const el = $("#view");
-  const views = { FSS: () => listView("FSS"), FRS: () => listView("FRS"), FMS: clipsView, inbox: inboxView, removals: removalsView, import: importView, trash: trashView, people: () => '<p class="sub">Loading…</p>', log: () => '<p class="sub">Loading…</p>' };
+  const views = { fill: fillView, FSS: () => listView("FSS"), FRS: () => listView("FRS"), FMS: clipsView, inbox: inboxView, removals: removalsView, import: importView, trash: trashView, people: () => '<p class="sub">Loading…</p>', log: () => '<p class="sub">Loading…</p>' };
   el.innerHTML = (views[view] || views.FSS)();
   if (view === "import") wireImport();
   if (view === "people") peopleView();
@@ -335,6 +335,7 @@ function listView(std) {
   return `<div class="bar">
       <input type="search" id="list-q" placeholder="Search ${NAMES[std].many.toLowerCase()}…" value="${esc(l.q)}" aria-label="Search">
       <span class="spacer"></span>
+      ${std === "FSS" && isAdmin() ? `<button class="btn lookup" data-go="fill">✨ Fill Missing Details</button>` : ""}
       <button class="btn" data-go="import">Upload CSV</button>
       <button class="btn primary" data-new="${std}">+ ${NAMES[std].add}</button>
     </div>
@@ -483,6 +484,9 @@ $("#view").addEventListener("click", async (e) => {
   const t = e.target.closest("button");
   if (!t) return;
   if (t.dataset.go) return go(t.dataset.go);
+  if ("fillStart" in t.dataset) return runFill();
+  if ("fillStop" in t.dataset) { fillRun.stop = true; t.disabled = true; return; }
+  if ("fillReport" in t.dataset) return fillReport();
   if (t.dataset.new) return openEditor(t.dataset.new);
   if (t.dataset.sort) { lists[view].sort = t.dataset.sort; saveHash(); render(); return $("[data-sort]")?.focus(); }
   if ("clearFilters" in t.dataset) { Object.assign(lists[view], { q: "", status: "", type: "", audience: "" }); saveHash(); return render(); }
@@ -521,6 +525,121 @@ $("#view").addEventListener("submit", (e) => {
   for (const b of f.querySelectorAll("button")) b.disabled = true;
   act(() => rpc("fc_approve_clip", { submission: id, edits }), "Approved. It's on the Flood Clips map now.");
 });
+
+// ---------- bulk: fill missing details from a web search ----------
+// Runs under the signed-in admin's own session, one service at a time (three
+// in parallel). Only blank fields are filled; names, descriptions, areas,
+// types, and topics are never changed. Each service stays published.
+const FILL_KEYS = { phone: "Phone", email: "Email", eligibility: "Who Qualifies", hours: "Hours", cost: "Cost", service_languages: "Languages", accessibility: "Accessibility", availability_note: "Availability details" };
+const fillRun = { running: false, stop: false, results: new Map() };
+const blankKeys = (item) => Object.keys(FILL_KEYS).filter((k) => !String(item.row[k] ?? "").trim());
+const fixPhone = (p) => {
+  const d = String(p ?? "").replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
+  return d.length === 10 ? `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}` : String(p ?? "").trim();
+};
+
+function fillView() {
+  const items = data.items.filter((i) => i.standard === "FSS" && i.status !== "excluded");
+  const todo = items.filter((i) => blankKeys(i).length);
+  const done = [...fillRun.results.values()];
+  const count = (st) => done.filter((r) => r.state === st).length;
+  const rows = items
+    .map((i) => {
+      const r = fillRun.results.get(i.id);
+      const pill = !r ? (blankKeys(i).length ? `<span class="pill unchanged">Waiting</span>` : `<span class="pill unchanged">Nothing missing</span>`)
+        : { working: `<span class="pill info">Searching…</span>`, saved: `<span class="pill add">Saved</span>`, nothing: `<span class="pill unchanged">Nothing new found</span>`, error: `<span class="pill error">Problem</span>` }[r.state];
+      return `<tr><td class="name">${esc(i.record.title)}</td><td>${pill}</td><td class="sub">${esc(r?.filled?.map((k) => FILL_KEYS[k] ?? k).join(", ") || r?.error || "")}${r?.flag ? `<div class="pill warn">${esc(r.flag)}</div>` : ""}${r?.notes ? `<div>${esc(r.notes)}</div>` : ""}</td></tr>`;
+    })
+    .join("");
+  return `<section class="panel">
+      <h2>✨ Fill Missing Details</h2>
+      <p>Searches the web for each service and fills in <strong>only blank fields</strong>: phone, email, who qualifies, hours, cost, languages, accessibility, and availability details. Names, descriptions, areas, types, and topics are never changed. Each service stays published, is marked “Source checked” with today's date, and is saved as soon as its search finishes.</p>
+      <p><strong>${todo.length}</strong> of ${items.length} services have something blank. Expect about ${Math.max(1, Math.ceil((todo.length * 20) / 3 / 60))}–${Math.max(1, Math.ceil((todo.length * 60) / 3 / 60))} minutes and roughly $${(todo.length * 0.1).toFixed(0)}–$${(todo.length * 0.3).toFixed(0)} in AI costs. Keep this tab open while it runs.</p>
+      <div class="bar">
+        ${fillRun.running ? `<button class="btn danger" data-fill-stop>Stop after the current searches</button>` : `<button class="btn primary" data-fill-start ${todo.length ? "" : "disabled"}>${done.length ? "Run again on what's still blank" : "Start"}</button>`}
+        ${done.length ? `<span class="sub">${count("saved")} saved · ${count("nothing")} nothing new · ${count("error")} problems${fillRun.running ? ` · ${count("working")} searching` : ""}</span>` : ""}
+        ${done.length && !fillRun.running ? `<button class="btn" data-fill-report>Download report (CSV)</button>` : ""}
+        <span class="spacer"></span><button class="btn" data-go="FSS">Back to Services</button>
+      </div>
+    </section>
+    <table class="table"><thead><tr><th>Service</th><th>Result</th><th>Filled / notes</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function fillOne(item) {
+  const res = { state: "working", title: item.record.title };
+  fillRun.results.set(item.id, res);
+  render();
+  try {
+    const s = item.record.service;
+    const hint = `Existing DataSponge listing. Area: ${s.service_area || ""}. Website: ${s.contact_url || ""}. Phone: ${s.phone || ""}. Find details for this exact organization.`;
+    const r = await fetch("/api/autofill", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name: item.record.title, hint }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || `Lookup failed (${r.status})`);
+    const f = j.fields;
+    const row = { ...item.row };
+    const filled = [];
+    const put = (k, v) => {
+      if (v == null || !String(v).trim() || String(row[k] ?? "").trim()) return;
+      row[k] = String(v).trim();
+      filled.push(k);
+    };
+    put("phone", f.phone && fixPhone(f.phone));
+    put("email", f.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email) ? f.email : null);
+    put("eligibility", f.eligibility);
+    put("accessibility", f.accessibility);
+    put("hours", hoursText(f.open_24_7, f.weekly_hours));
+    put("cost", costText(f.cost_min, f.cost_max));
+    put("service_languages", (f.service_languages || []).join(" | "));
+    put("availability_note", f.availability_note);
+    if (f.availability === "no" && !["closed", "historical", "temporarily_unavailable"].includes(row.availability)) {
+      row.availability = "closed";
+      filled.push("availability");
+      res.flag = "Search says they're no longer taking people, so it's now marked Closed and hidden from Local Help.";
+    }
+    res.notes = f.notes || "";
+    res.sources = (j.sources || []).map((x) => x.url);
+    if (!filled.length) return Object.assign(res, { state: "nothing" });
+    row.source_checked_at = today();
+    if (!row.verification_status || row.verification_status === "unreviewed") row.verification_status = "source_checked";
+    const record = fromRow("FSS", row, item.record);
+    const errors = validate(record, item.status);
+    if (Object.keys(errors).length) throw new Error(`Couldn't save: ${Object.entries(errors).map(([k, m]) => `${k} ${m}`).join("; ")}`);
+    const saved = await rpc("fc_save_record", { doc: record, target: item.status, record_audience: item.audience, expected_revision: item.rev });
+    item.rev = saved.revision;
+    item.record = record;
+    item.row = toRow(record, { status: item.status, audience: item.audience });
+    Object.assign(res, { state: "saved", filled });
+  } catch (err) {
+    Object.assign(res, { state: "error", error: err.message });
+  } finally {
+    render();
+  }
+}
+
+async function runFill() {
+  if (fillRun.running) return;
+  const queue = data.items.filter((i) => i.standard === "FSS" && i.status !== "excluded" && blankKeys(i).length && fillRun.results.get(i.id)?.state !== "saved");
+  if (!confirm(`Search the web for ${queue.length} services and save what's found to blank fields? They stay published.`)) return;
+  Object.assign(fillRun, { running: true, stop: false });
+  render();
+  const worker = async () => {
+    while (queue.length && !fillRun.stop) await fillOne(queue.shift());
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  fillRun.running = false;
+  await refresh().catch(() => {});
+  render();
+  flash(fillRun.stop ? "Stopped. Saved results are kept." : "Done. Download the report to review what was filled.");
+}
+
+function fillReport() {
+  const rows = [...fillRun.results.values()].map((r) => ({ service: r.title, result: r.state, filled: (r.filled || []).map((k) => FILL_KEYS[k] ?? k).join(" | "), flag: r.flag || "", notes: r.notes || r.error || "", sources: (r.sources || []).join(" | ") }));
+  download(`datasponge-fill-report-${today()}.csv`, toCsv(["service", "result", "filled", "flag", "notes", "sources"], rows));
+}
 
 // ---------- editor ----------
 let editing = null;

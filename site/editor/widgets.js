@@ -393,3 +393,19 @@ export function detailsFor(type) {
   const k = kindOf(type);
   return k ? DETAILS_FOR[k] : DETAIL_KEYS.filter((d) => !OPTIONAL_DETAILS.some(([o]) => o === d));
 }
+
+// Cost range text from lookup keys ("free".."5"); "" when unknown.
+export function costText(lo, hi) {
+  const rank = (k) => COST_LEVELS.findIndex(([x]) => x === k);
+  if (rank(lo) < 0 && rank(hi) < 0) return "";
+  let a = rank(lo) < 0 ? hi : lo;
+  let b = rank(hi) < 0 ? a : hi;
+  if (rank(a) > rank(b)) [a, b] = [b, a];
+  return a === b ? COST_LEVELS[rank(a)][1] : `${COST_LEVELS[rank(a)][1]}–${COST_LEVELS[rank(b)][1]}`;
+}
+// Hours text from lookup fields; "" when unknown.
+export function hoursText(open247, list) {
+  if (open247) return "Open 24/7";
+  const days = Object.fromEntries((list ?? []).filter((d) => /^\d{2}:\d{2}$/.test(d.open) && /^\d{2}:\d{2}$/.test(d.close)).map((d) => [d.day, [d.open, d.close]]));
+  return Object.keys(days).length ? formatHours(days) : "";
+}
