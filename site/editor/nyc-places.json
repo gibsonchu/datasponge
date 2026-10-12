@@ -1,0 +1,654 @@
+[
+ {
+  "id": "citywide",
+  "label": "NYC Citywide",
+  "name": "New York City",
+  "level": "city"
+ },
+ {
+  "id": "manhattan",
+  "label": "Manhattan",
+  "name": "Manhattan",
+  "level": "borough"
+ },
+ {
+  "id": "brooklyn",
+  "label": "Brooklyn",
+  "name": "Brooklyn",
+  "level": "borough"
+ },
+ {
+  "id": "queens",
+  "label": "Queens",
+  "name": "Queens",
+  "level": "borough"
+ },
+ {
+  "id": "bronx",
+  "label": "Bronx",
+  "name": "Bronx",
+  "level": "borough"
+ },
+ {
+  "id": "staten-island",
+  "label": "Staten Island",
+  "name": "Staten Island",
+  "level": "borough"
+ },
+ {
+  "id": "manhattan/battery-park-city",
+  "label": "Battery Park City",
+  "name": "Battery Park City, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/chelsea",
+  "label": "Chelsea",
+  "name": "Chelsea, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/chinatown",
+  "label": "Chinatown",
+  "name": "Chinatown, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/east-harlem",
+  "label": "East Harlem",
+  "name": "East Harlem, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/east-village",
+  "label": "East Village",
+  "name": "East Village, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/financial-district",
+  "label": "Financial District",
+  "name": "Financial District, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/harlem",
+  "label": "Harlem",
+  "name": "Harlem, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/inwood",
+  "label": "Inwood",
+  "name": "Inwood, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/lower-east-side",
+  "label": "Lower East Side",
+  "name": "Lower East Side, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/midtown",
+  "label": "Midtown",
+  "name": "Midtown, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/tribeca",
+  "label": "Tribeca",
+  "name": "Tribeca, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/two-bridges",
+  "label": "Two Bridges",
+  "name": "Two Bridges, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/upper-east-side",
+  "label": "Upper East Side",
+  "name": "Upper East Side, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/upper-west-side",
+  "label": "Upper West Side",
+  "name": "Upper West Side, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/washington-heights",
+  "label": "Washington Heights",
+  "name": "Washington Heights, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "brooklyn/bath-beach",
+  "label": "Bath Beach",
+  "name": "Bath Beach, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/bay-ridge",
+  "label": "Bay Ridge",
+  "name": "Bay Ridge, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/bensonhurst",
+  "label": "Bensonhurst",
+  "name": "Bensonhurst, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/brighton-beach",
+  "label": "Brighton Beach",
+  "name": "Brighton Beach, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/bushwick",
+  "label": "Bushwick",
+  "name": "Bushwick, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/canarsie",
+  "label": "Canarsie",
+  "name": "Canarsie, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/carroll-gardens",
+  "label": "Carroll Gardens",
+  "name": "Carroll Gardens, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/coney-island",
+  "label": "Coney Island",
+  "name": "Coney Island, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/crown-heights",
+  "label": "Crown Heights",
+  "name": "Crown Heights, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/east-flatbush",
+  "label": "East Flatbush",
+  "name": "East Flatbush, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/east-new-york",
+  "label": "East New York",
+  "name": "East New York, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/flatbush",
+  "label": "Flatbush",
+  "name": "Flatbush, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/flatlands",
+  "label": "Flatlands",
+  "name": "Flatlands, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/gerritsen-beach",
+  "label": "Gerritsen Beach",
+  "name": "Gerritsen Beach, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/gowanus",
+  "label": "Gowanus",
+  "name": "Gowanus, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/gravesend",
+  "label": "Gravesend",
+  "name": "Gravesend, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/greenpoint",
+  "label": "Greenpoint",
+  "name": "Greenpoint, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/homecrest",
+  "label": "Homecrest",
+  "name": "Homecrest, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/manhattan-beach",
+  "label": "Manhattan Beach",
+  "name": "Manhattan Beach, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/marine-park",
+  "label": "Marine Park",
+  "name": "Marine Park, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/mill-basin",
+  "label": "Mill Basin",
+  "name": "Mill Basin, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/park-slope",
+  "label": "Park Slope",
+  "name": "Park Slope, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/red-hook",
+  "label": "Red Hook",
+  "name": "Red Hook, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/sea-gate",
+  "label": "Sea Gate",
+  "name": "Sea Gate, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/sheepshead-bay",
+  "label": "Sheepshead Bay",
+  "name": "Sheepshead Bay, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/sunset-park",
+  "label": "Sunset Park",
+  "name": "Sunset Park, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/williamsburg",
+  "label": "Williamsburg",
+  "name": "Williamsburg, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "queens/arverne",
+  "label": "Arverne",
+  "name": "Arverne, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/astoria",
+  "label": "Astoria",
+  "name": "Astoria, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/breezy-point",
+  "label": "Breezy Point",
+  "name": "Breezy Point, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/broad-channel",
+  "label": "Broad Channel",
+  "name": "Broad Channel, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/college-point",
+  "label": "College Point",
+  "name": "College Point, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/corona",
+  "label": "Corona",
+  "name": "Corona, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/elmhurst",
+  "label": "Elmhurst",
+  "name": "Elmhurst, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/far-rockaway",
+  "label": "Far Rockaway",
+  "name": "Far Rockaway, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/flushing",
+  "label": "Flushing",
+  "name": "Flushing, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/hollis",
+  "label": "Hollis",
+  "name": "Hollis, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/howard-beach",
+  "label": "Howard Beach",
+  "name": "Howard Beach, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/jackson-heights",
+  "label": "Jackson Heights",
+  "name": "Jackson Heights, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/jamaica",
+  "label": "Jamaica",
+  "name": "Jamaica, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/long-island-city",
+  "label": "Long Island City",
+  "name": "Long Island City, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/rockaway-beach",
+  "label": "Rockaway Beach",
+  "name": "Rockaway Beach, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/rockaway-park",
+  "label": "Rockaway Park",
+  "name": "Rockaway Park, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/rosedale",
+  "label": "Rosedale",
+  "name": "Rosedale, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/south-ozone-park",
+  "label": "South Ozone Park",
+  "name": "South Ozone Park, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/st-albans",
+  "label": "St. Albans",
+  "name": "St. Albans, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/woodside",
+  "label": "Woodside",
+  "name": "Woodside, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "bronx/castle-hill",
+  "label": "Castle Hill",
+  "name": "Castle Hill, Bronx",
+  "level": "neighborhood",
+  "borough": "Bronx"
+ },
+ {
+  "id": "bronx/city-island",
+  "label": "City Island",
+  "name": "City Island, Bronx",
+  "level": "neighborhood",
+  "borough": "Bronx"
+ },
+ {
+  "id": "bronx/clason-point",
+  "label": "Clason Point",
+  "name": "Clason Point, Bronx",
+  "level": "neighborhood",
+  "borough": "Bronx"
+ },
+ {
+  "id": "bronx/co-op-city",
+  "label": "Co-op City",
+  "name": "Co-op City, Bronx",
+  "level": "neighborhood",
+  "borough": "Bronx"
+ },
+ {
+  "id": "bronx/fordham",
+  "label": "Fordham",
+  "name": "Fordham, Bronx",
+  "level": "neighborhood",
+  "borough": "Bronx"
+ },
+ {
+  "id": "bronx/hunts-point",
+  "label": "Hunts Point",
+  "name": "Hunts Point, Bronx",
+  "level": "neighborhood",
+  "borough": "Bronx"
+ },
+ {
+  "id": "bronx/kingsbridge",
+  "label": "Kingsbridge",
+  "name": "Kingsbridge, Bronx",
+  "level": "neighborhood",
+  "borough": "Bronx"
+ },
+ {
+  "id": "bronx/melrose",
+  "label": "Melrose",
+  "name": "Melrose, Bronx",
+  "level": "neighborhood",
+  "borough": "Bronx"
+ },
+ {
+  "id": "bronx/mott-haven",
+  "label": "Mott Haven",
+  "name": "Mott Haven, Bronx",
+  "level": "neighborhood",
+  "borough": "Bronx"
+ },
+ {
+  "id": "bronx/pelham-bay",
+  "label": "Pelham Bay",
+  "name": "Pelham Bay, Bronx",
+  "level": "neighborhood",
+  "borough": "Bronx"
+ },
+ {
+  "id": "bronx/port-morris",
+  "label": "Port Morris",
+  "name": "Port Morris, Bronx",
+  "level": "neighborhood",
+  "borough": "Bronx"
+ },
+ {
+  "id": "bronx/riverdale",
+  "label": "Riverdale",
+  "name": "Riverdale, Bronx",
+  "level": "neighborhood",
+  "borough": "Bronx"
+ },
+ {
+  "id": "bronx/soundview",
+  "label": "Soundview",
+  "name": "Soundview, Bronx",
+  "level": "neighborhood",
+  "borough": "Bronx"
+ },
+ {
+  "id": "bronx/throgs-neck",
+  "label": "Throgs Neck",
+  "name": "Throgs Neck, Bronx",
+  "level": "neighborhood",
+  "borough": "Bronx"
+ },
+ {
+  "id": "staten-island/elm-park",
+  "label": "Elm Park",
+  "name": "Elm Park, Staten Island",
+  "level": "neighborhood",
+  "borough": "Staten Island"
+ },
+ {
+  "id": "staten-island/graniteville",
+  "label": "Graniteville",
+  "name": "Graniteville, Staten Island",
+  "level": "neighborhood",
+  "borough": "Staten Island"
+ },
+ {
+  "id": "staten-island/great-kills",
+  "label": "Great Kills",
+  "name": "Great Kills, Staten Island",
+  "level": "neighborhood",
+  "borough": "Staten Island"
+ },
+ {
+  "id": "staten-island/mariners-harbor",
+  "label": "Mariners Harbor",
+  "name": "Mariners Harbor, Staten Island",
+  "level": "neighborhood",
+  "borough": "Staten Island"
+ },
+ {
+  "id": "staten-island/midland-beach",
+  "label": "Midland Beach",
+  "name": "Midland Beach, Staten Island",
+  "level": "neighborhood",
+  "borough": "Staten Island"
+ },
+ {
+  "id": "staten-island/new-dorp-beach",
+  "label": "New Dorp Beach",
+  "name": "New Dorp Beach, Staten Island",
+  "level": "neighborhood",
+  "borough": "Staten Island"
+ },
+ {
+  "id": "staten-island/oakwood-beach",
+  "label": "Oakwood Beach",
+  "name": "Oakwood Beach, Staten Island",
+  "level": "neighborhood",
+  "borough": "Staten Island"
+ },
+ {
+  "id": "staten-island/port-richmond",
+  "label": "Port Richmond",
+  "name": "Port Richmond, Staten Island",
+  "level": "neighborhood",
+  "borough": "Staten Island"
+ },
+ {
+  "id": "staten-island/south-beach",
+  "label": "South Beach",
+  "name": "South Beach, Staten Island",
+  "level": "neighborhood",
+  "borough": "Staten Island"
+ },
+ {
+  "id": "staten-island/st-george",
+  "label": "St. George",
+  "name": "St. George, Staten Island",
+  "level": "neighborhood",
+  "borough": "Staten Island"
+ },
+ {
+  "id": "staten-island/stapleton",
+  "label": "Stapleton",
+  "name": "Stapleton, Staten Island",
+  "level": "neighborhood",
+  "borough": "Staten Island"
+ },
+ {
+  "id": "staten-island/tottenville",
+  "label": "Tottenville",
+  "name": "Tottenville, Staten Island",
+  "level": "neighborhood",
+  "borough": "Staten Island"
+ }
+]

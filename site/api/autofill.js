@@ -12,6 +12,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import taxonomy from "../standards/taxonomy.json" with { type: "json" };
 import config from "../config.json" with { type: "json" };
+import places from "../editor/nyc-places.json" with { type: "json" };
 
 const keys = (dim) => taxonomy.filter((t) => t.dimension === dim).map((t) => t.key);
 const SERVICE_TYPES = [
@@ -29,8 +30,12 @@ const FIELDS = {
   title: { type: "string", description: "The service's name as the organization publishes it." },
   provider_name: str,
   summary: { type: "string", description: "Two or three plain-language sentences: what they do for people dealing with flooding in NYC. No marketing language." },
-  service_type: { type: "string", enum: SERVICE_TYPES },
-  service_area: { type: "string", description: 'Where they serve, naming boroughs or neighborhoods, e.g. "Red Hook, Brooklyn" or "Citywide".' },
+  service_type: { type: "string", enum: [...SERVICE_TYPES, "other"] },
+  service_type_other: { ...str, description: 'Only when service_type is "other": a short type such as "Roof repair".' },
+  areas: {
+    ...list({ type: "string", enum: places.map((p) => p.id) }),
+    description: 'Where they serve. "citywide" for all of NYC; otherwise borough ids (e.g. "brooklyn") and/or neighborhood ids (e.g. "brooklyn/red-hook"). Pick the most specific that is accurate.',
+  },
   categories: list({ type: "string", enum: keys("topic") }),
   audiences: list({ type: "string", enum: keys("audience") }),
   action_stages: list({ type: "string", enum: keys("stage") }),
@@ -40,8 +45,19 @@ const FIELDS = {
   provider_url: { ...str, description: "The organization's homepage." },
   availability: { type: "string", enum: keys("availability") },
   eligibility: str,
-  cost: str,
-  hours: str,
+  cost_min: { type: "string", enum: ["free", "1", "2", "3", "4", "5", "unknown"], description: "Cheapest typical cost: free, 1 = under $100, 2 = $100-500, 3 = $500-2,000, 4 = $2,000-10,000, 5 = over $10,000, or unknown." },
+  cost_max: { type: "string", enum: ["free", "1", "2", "3", "4", "5", "unknown"], description: "Most expensive typical cost on the same scale." },
+  open_24_7: { type: "boolean", description: "True only if a source says they operate 24 hours, 7 days." },
+  weekly_hours: list({
+    type: "object",
+    properties: {
+      day: { type: "string", enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] },
+      open: { type: "string", description: "24-hour HH:MM" },
+      close: { type: "string", description: "24-hour HH:MM" },
+    },
+    required: ["day", "open", "close"],
+    additionalProperties: false,
+  }),
   service_languages: list({ type: "string" }),
   accessibility: str,
   source_url: { type: "string", description: "The page that best supports these details." },
@@ -63,6 +79,8 @@ Research the named organization or program on the web, then call fill_service_fo
 - Describe the help as it relates to flooding: preparing, cleanup, repairs, insurance, money, tenant rights, recovery.
 - If the name matches several organizations, pick the one serving NYC flood-affected people and say so in notes. If you can't identify it, set found to false.
 - availability: use listed_contact_provider unless a page clearly says otherwise.
+- weekly_hours: only days and times a source states; empty list if unknown. Use open_24_7 for round-the-clock services.
+- cost: free programs are "free" for both ends; leave "unknown" rather than guess.
 - Write for a resident in a stressful moment: short, concrete sentences.`;
 
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });

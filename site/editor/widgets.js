@@ -1,0 +1,235 @@
+/**
+ * Structured pickers for the service form. FSS stores service area, places,
+ * hours, cost, and type as text, so each picker reads and writes plain text
+ * that Local Help and the AI already understand:
+ *
+ *   service_area  "Citywide" | "Red Hook, Brooklyn; Queens"
+ *   places        "New York City" | "Red Hook, Brooklyn | Queens"
+ *   hours         "Open 24/7" | "Mon–Fri 9 AM–5 PM; Sat 10 AM–2 PM"
+ *   cost          "Free" | "$$–$$$"
+ *
+ * A picker the editor never touches keeps the record's original text, so
+ * older listings with free-form values aren't rewritten by accident.
+ */
+import { typeLabel } from "./records.js";
+
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+export const PLACES = await fetch(new URL("./nyc-places.json", import.meta.url)).then((r) => r.json());
+const byId = new Map(PLACES.map((p) => [p.id, p]));
+const byName = new Map(PLACES.map((p) => [p.name.toLowerCase(), p]));
+const touched = (el) => el?.dataset.dirty === "1";
+export function markDirty(e) {
+  const w = e.target.closest("[data-widget]");
+  if (w) w.dataset.dirty = "1";
+}
+
+// ---------- service type ----------
+export const SERVICE_TYPE_KEYS = [
+  "referral", "financial_help", "insurance_help", "legal_help", "tenant_support", "small_business_support", "emergency_response",
+  "cleanup", "mold_remediation", "mold_assessment", "plumbing", "sewer_cleaning", "waterproofing", "backwater_valve", "sump_pump_install",
+  "education", "workforce", "planning", "preparedness", "community", "advocacy", "green_infrastructure", "climate_resilience",
+];
+export function serviceTypeHtml(value) {
+  const known = SERVICE_TYPE_KEYS.includes(value);
+  const other = value && !known;
+  return `<div class="type-pick" data-widget="type">
+    <select id="f-service_type" name="service_type">
+      <option value="" ${value ? "" : "selected"}>Choose a type…</option>
+      ${[...SERVICE_TYPE_KEYS].sort((a, b) => typeLabel(a).localeCompare(typeLabel(b))).map((k) => `<option value="${k}" ${value === k ? "selected" : ""}>${esc(typeLabel(k))}</option>`).join("")}
+      <option value="other" ${other ? "selected" : ""}>Other…</option>
+    </select>
+    <input name="service_type_other" placeholder="Describe the type, e.g. Roof repair" value="${other ? esc(typeLabel(value)) : ""}" ${other ? "" : "hidden"} aria-label="Other service type">
+  </div>`;
+}
+export function readServiceType(form) {
+  const v = form.elements.service_type.value;
+  return v === "other" ? form.elements.service_type_other.value.trim() : v;
+}
+export function setServiceType(form, type, other) {
+  const sel = form.elements.service_type;
+  const box = form.elements.service_type_other;
+  if (SERVICE_TYPE_KEYS.includes(type)) { sel.value = type; box.hidden = true; }
+  else { sel.value = "other"; box.hidden = false; box.value = other || (type && type !== "other" ? typeLabel(type) : ""); }
+}
+
+// ---------- service area (area + places) ----------
+// Original values are kept on the element so an untouched picker saves them unchanged.
+export function areaHtml(serviceArea, places) {
+  const names = String(places ?? "").split(/\s*\|\s*/).filter(Boolean);
+  const picked = new Set();
+  const extra = [];
+  for (const n of names) {
+    const p = byName.get(n.toLowerCase());
+    p ? picked.add(p.id) : extra.push(n);
+  }
+  if (/\bcitywide\b|^new york city$|^nyc$/i.test(serviceArea ?? "")) picked.add("citywide");
+  const box = (p) => `<label><input type="checkbox" name="area" value="${p.id}" ${picked.has(p.id) ? "checked" : ""}>${esc(p.label)}</label>`;
+  const boroughs = PLACES.filter((p) => p.level === "borough");
+  return `<div class="area-pick" data-widget="area" data-orig-area="${esc(serviceArea ?? "")}" data-orig-places="${esc(places ?? "")}">
+    <div class="checks">${box(byId.get("citywide"))}</div>
+    <p class="pick-head">Boroughs</p>
+    <div class="checks">${boroughs.map(box).join("")}</div>
+    <details class="hoods" ${PLACES.some((p) => p.level === "neighborhood" && picked.has(p.id)) ? "open" : ""}>
+      <summary>Neighborhoods</summary>
+      ${boroughs.map((b) => `<p class="pick-head">${esc(b.label)}</p><div class="checks">${PLACES.filter((p) => p.borough === b.label).map(box).join("")}</div>`).join("")}
+    </details>
+    ${extra.length ? `<p class="pick-head">Also listed (from the existing record)</p><div class="checks">${extra.map((n) => `<label><input type="checkbox" name="area_extra" value="${esc(n)}" checked>${esc(n)}</label>`).join("")}</div>` : ""}
+    ${serviceArea && serviceArea !== areaText(picked, extra) ? `<p class="hint">Current description: “${esc(serviceArea)}”. It stays as written unless you change the boxes.</p>` : ""}
+  </div>`;
+}
+const areaText = (ids, extra = []) => ([...ids].includes("citywide") ? "Citywide" : [...[...ids].map((id) => byId.get(id).name), ...extra].join("; "));
+export function readArea(form) {
+  const w = form.querySelector('[data-widget="area"]');
+  if (!touched(w)) return { service_area: w.dataset.origArea, places: w.dataset.origPlaces };
+  const ids = [...form.querySelectorAll('input[name="area"]:checked')].map((i) => i.value);
+  const extra = [...form.querySelectorAll('input[name="area_extra"]:checked')].map((i) => i.value);
+  if (ids.includes("citywide")) return { service_area: "Citywide", places: ["New York City", ...extra].join(" | ") };
+  return { service_area: areaText(ids, extra), places: [...ids.map((id) => byId.get(id).name), ...extra].join(" | ") };
+}
+export function setAreas(form, ids) {
+  const w = form.querySelector('[data-widget="area"]');
+  for (const i of form.querySelectorAll('input[name="area"]')) i.checked = ids.includes(i.value);
+  if (ids.some((id) => byId.get(id)?.level === "neighborhood")) w.querySelector("details.hoods").open = true;
+  w.dataset.dirty = "1";
+}
+
+// ---------- hours ----------
+const DAYS = [["mon", "Mon"], ["tue", "Tue"], ["wed", "Wed"], ["thu", "Thu"], ["fri", "Fri"], ["sat", "Sat"], ["sun", "Sun"]];
+const fmtTime = (t) => {
+  const [h, m] = t.split(":").map(Number);
+  return `${h % 12 || 12}${m ? `:${String(m).padStart(2, "0")}` : ""} ${h < 12 ? "AM" : "PM"}`;
+};
+const parseTime = (s) => {
+  const m = s.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+  if (!m) return null;
+  let h = Number(m[1]) % 12;
+  if (/pm/i.test(m[3])) h += 12;
+  return `${String(h).padStart(2, "0")}:${m[2] ?? "00"}`;
+};
+// "Mon–Fri 9 AM–5 PM; Sat 10 AM–2 PM" -> { mon: ["09:00","17:00"], ... }, or null if it isn't this format.
+function parseHours(text) {
+  const out = {};
+  for (const part of String(text).split(/\s*;\s*/)) {
+    const m = part.match(/^(\w{3})(?:–(\w{3}))?\s+(.+?)–(.+)$/);
+    if (!m) return null;
+    const a = DAYS.findIndex(([, l]) => l === m[1]);
+    const b = m[2] ? DAYS.findIndex(([, l]) => l === m[2]) : a;
+    const open = parseTime(m[3]);
+    const close = parseTime(m[4]);
+    if (a < 0 || b < a || !open || !close) return null;
+    for (let i = a; i <= b; i++) out[DAYS[i][0]] = [open, close];
+  }
+  return out;
+}
+export function formatHours(days) {
+  const parts = [];
+  let i = 0;
+  while (i < DAYS.length) {
+    const d = days[DAYS[i][0]];
+    if (!d) { i++; continue; }
+    let j = i;
+    while (j + 1 < DAYS.length && days[DAYS[j + 1][0]]?.join() === d.join()) j++;
+    parts.push(`${DAYS[i][1]}${j > i ? `–${DAYS[j][1]}` : ""} ${fmtTime(d[0])}–${fmtTime(d[1])}`);
+    i = j + 1;
+  }
+  return parts.join("; ");
+}
+export function hoursHtml(value) {
+  const always = /^open 24\/7$/i.test(value ?? "");
+  const days = (!always && value && parseHours(value)) || {};
+  const custom = value && !always && !Object.keys(days).length;
+  return `<div class="hours-pick" data-widget="hours" data-orig="${esc(value ?? "")}">
+    <label class="inline-check"><input type="checkbox" name="hours_247" ${always ? "checked" : ""}> Open 24 hours, 7 days a week</label>
+    <div class="days" ${always ? "hidden" : ""}>
+      ${DAYS.map(([k, l]) => `<div class="day-row"><label class="inline-check"><input type="checkbox" name="day_${k}" ${days[k] ? "checked" : ""}> ${l}</label>
+        <input type="time" name="open_${k}" value="${days[k]?.[0] ?? "09:00"}" aria-label="${l} opens" ${days[k] ? "" : "disabled"}>
+        <span>to</span>
+        <input type="time" name="close_${k}" value="${days[k]?.[1] ?? "17:00"}" aria-label="${l} closes" ${days[k] ? "" : "disabled"}></div>`).join("")}
+      <button type="button" class="link-btn" data-copy-weekdays>Copy Monday's hours to Tue–Fri</button>
+    </div>
+    ${custom ? `<p class="hint">Current hours: “${esc(value)}”. They stay as written unless you change the boxes.</p>` : ""}
+  </div>`;
+}
+export function readHours(form) {
+  const w = form.querySelector('[data-widget="hours"]');
+  if (!touched(w)) return w.dataset.orig;
+  if (form.elements.hours_247.checked) return "Open 24/7";
+  const days = {};
+  for (const [k] of DAYS) if (form.elements[`day_${k}`].checked) days[k] = [form.elements[`open_${k}`].value, form.elements[`close_${k}`].value];
+  return formatHours(days);
+}
+export function setHours(form, open247, list) {
+  const w = form.querySelector('[data-widget="hours"]');
+  form.elements.hours_247.checked = Boolean(open247);
+  w.querySelector(".days").hidden = Boolean(open247);
+  for (const [k] of DAYS) {
+    const d = list?.find((x) => x.day === k);
+    form.elements[`day_${k}`].checked = Boolean(d);
+    form.elements[`open_${k}`].disabled = form.elements[`close_${k}`].disabled = !d;
+    if (d) { form.elements[`open_${k}`].value = d.open; form.elements[`close_${k}`].value = d.close; }
+  }
+  w.dataset.dirty = "1";
+}
+export function hoursEvents(e) {
+  const form = e.target.form;
+  if (!form) return;
+  if (e.target.name === "hours_247") form.querySelector('[data-widget="hours"] .days').hidden = e.target.checked;
+  const m = e.target.name?.match(/^day_(\w+)$/);
+  if (m) form.elements[`open_${m[1]}`].disabled = form.elements[`close_${m[1]}`].disabled = !e.target.checked;
+  if (e.target.name === "service_type") form.elements.service_type_other.hidden = e.target.value !== "other";
+}
+export function copyWeekdays(form) {
+  const [o, c, on] = [form.elements.open_mon.value, form.elements.close_mon.value, form.elements.day_mon.checked];
+  for (const k of ["tue", "wed", "thu", "fri"]) {
+    form.elements[`day_${k}`].checked = on;
+    form.elements[`open_${k}`].value = o;
+    form.elements[`close_${k}`].value = c;
+    form.elements[`open_${k}`].disabled = form.elements[`close_${k}`].disabled = !on;
+  }
+  form.querySelector('[data-widget="hours"]').dataset.dirty = "1";
+}
+
+// ---------- cost ----------
+export const COST_LEVELS = [
+  ["free", "Free", "Free"],
+  ["1", "$", "$ — under $100"],
+  ["2", "$$", "$$ — $100 to $500"],
+  ["3", "$$$", "$$$ — $500 to $2,000"],
+  ["4", "$$$$", "$$$$ — $2,000 to $10,000"],
+  ["5", "$$$$$", "$$$$$ — over $10,000"],
+];
+const costKey = (sym) => COST_LEVELS.find(([, s]) => s === sym)?.[0];
+function parseCost(text) {
+  const parts = String(text ?? "").trim().split(/\s*–\s*/);
+  const keys = parts.map(costKey);
+  return keys.every(Boolean) && keys.length <= 2 ? [keys[0], keys[1] ?? keys[0]] : null;
+}
+export function costHtml(value) {
+  const parsed = parseCost(value);
+  const [lo, hi] = parsed ?? ["", ""];
+  const opts = (sel) => `<option value="">Not sure</option>${COST_LEVELS.map(([k, , l]) => `<option value="${k}" ${sel === k ? "selected" : ""}>${esc(l)}</option>`).join("")}`;
+  return `<div class="cost-pick" data-widget="cost" data-orig="${esc(value ?? "")}">
+    <label class="inline">From <select name="cost_min" aria-label="Lowest cost">${opts(lo)}</select></label>
+    <label class="inline">To <select name="cost_max" aria-label="Highest cost">${opts(hi)}</select></label>
+    ${value && !parsed ? `<p class="hint">Current cost: “${esc(value)}”. It stays as written unless you change the range.</p>` : ""}
+  </div>`;
+}
+export function readCost(form) {
+  const w = form.querySelector('[data-widget="cost"]');
+  if (!touched(w)) return w.dataset.orig;
+  let lo = form.elements.cost_min.value;
+  let hi = form.elements.cost_max.value || lo;
+  lo = lo || hi;
+  if (!lo) return "";
+  const rank = (k) => COST_LEVELS.findIndex(([x]) => x === k);
+  if (rank(lo) > rank(hi)) [lo, hi] = [hi, lo];
+  const sym = (k) => COST_LEVELS[rank(k)][1];
+  return lo === hi ? sym(lo) : `${sym(lo)}–${sym(hi)}`;
+}
+export function setCost(form, lo, hi) {
+  if (!lo || lo === "unknown") return false;
+  form.elements.cost_min.value = lo;
+  form.elements.cost_max.value = hi && hi !== "unknown" ? hi : lo;
+  form.querySelector('[data-widget="cost"]').dataset.dirty = "1";
+  return true;
+}

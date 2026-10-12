@@ -138,12 +138,33 @@ dialog#editor { width: min(780px, calc(100% - 24px)); max-height: calc(100vh - 2
 .lookup-row input { flex: 1; min-width: 0; }
 .btn.lookup { flex: none; background: var(--mint); border-color: var(--teal); white-space: nowrap; }
 .btn.lookup:hover { border-color: var(--ink); }
-.lookup-note { margin: 14px 0 0; padding: 12px 14px; border-radius: 10px; background: var(--blue-soft); color: var(--ink); font-size: 14px; font-weight: 400; }
-.lookup-note.ok { background: var(--green-soft); }
-.lookup-note.bad { background: var(--red-soft); color: var(--red); font-weight: 600; }
-.lookup-note p { margin: 6px 0 0; }
-.field.ai-filled input, .field.ai-filled select, .field.ai-filled textarea, .field.ai-filled .checks { background: #fffbea; border-color: #e3c56b; }
+.lookup-status { font-size: 13px; font-weight: 600; color: var(--muted); }
+.lookup-status:empty { display: none; }
+.lookup-status.ok { color: var(--green); }
+.lookup-status.bad { color: var(--red); }
+.lookup-details { grid-column: 1 / -1; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: #fafcfd; font-size: 14px; }
+.lookup-details summary { cursor: pointer; font-weight: 700; }
+.lookup-details p { margin: 8px 0 0; }
+.lookup-details .sources { margin: 4px 0 0; padding-left: 18px; }
+.field.ai-filled input, .field.ai-filled select, .field.ai-filled textarea, .field.ai-filled .checks, .field.ai-filled .area-pick, .field.ai-filled .hours-pick { background: #fffbea; border-color: #e3c56b; }
 .field.ai-filled > span:first-child::after { content: " · from web search"; font-weight: 400; font-size: 12px; color: var(--amber); }
+
+/* Structured pickers */
+.type-pick { display: grid; gap: 8px; }
+.area-pick, .hours-pick { display: grid; gap: 8px; border: 1px solid transparent; border-radius: 10px; padding: 2px; }
+.pick-head { margin: 4px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.hoods summary { cursor: pointer; font-weight: 700; color: var(--blue); margin: 4px 0; }
+.hoods .checks { margin-bottom: 6px; }
+.inline-check { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.inline-check input { width: auto; accent-color: var(--ink); }
+.days { display: grid; gap: 6px; }
+.day-row { display: grid; grid-template-columns: 80px 140px auto 140px; justify-content: start; align-items: center; gap: 10px; }
+.day-row input[type=time] { padding: 6px 8px; }
+.day-row input[type=time]:disabled { opacity: 0.4; }
+.days .link-btn { justify-self: start; font-size: 13px; }
+.cost-pick { display: flex; gap: 12px; flex-wrap: wrap; }
+.cost-pick label.inline select { min-width: 190px; }
+.cost-pick .hint { flex-basis: 100%; }
 
 /* Panels (import, inbox, people) */
 .panel { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); }
@@ -194,6 +215,7 @@ dialog#editor { width: min(780px, calc(100% - 24px)); max-height: calc(100vh - 2
   .table td { border: 0; padding: 4px 12px; }
   .row-actions { justify-content: flex-start; }
   .fgroup, .clip-form, .clip-card { grid-template-columns: 1fr; }
+  .day-row { grid-template-columns: 70px 1fr auto 1fr; }
   label.inline { flex: 1 1 100%; justify-content: space-between; }
   label.inline select { flex: 1; max-width: 70%; }
 }

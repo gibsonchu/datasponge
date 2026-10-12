@@ -13,6 +13,10 @@
 import {
   TERMS, STATUSES, AUDIENCES, columnsFor, labelOf, fromRow, applyRow, toRow, validate, sameRecord, normChoice, today, sixMonths,
 } from "./records.js";
+import {
+  serviceTypeHtml, readServiceType, setServiceType, areaHtml, readArea, setAreas, hoursHtml, readHours, setHours, hoursEvents, copyWeekdays,
+  costHtml, readCost, setCost, markDirty,
+} from "./widgets.js";
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -21,7 +25,7 @@ const NAMES = {
   FRS: { one: "answer or resource", many: "Answers & resources", add: "Add an answer or resource" },
   FMS: { one: "clip", many: "Clips" },
 };
-const GROUPS = { basics: "Basics", where: "Where", who: "Who it's for & topics", contact: "Contact", details: "Details", source: "Source & review", visibility: "Visibility" };
+const GROUPS = { basics: "Basics", contact: "Contact", where: "Service Area", who: "Who It's For & Topics", details: "Details", source: "Source & Review (Internal Only)", visibility: "Visibility" };
 const STATUS_LABEL = { published: "Published", draft: "Draft", hidden: "Hidden" };
 const AUDIENCE_LABEL = { public: "Public", internal: "AI-only" };
 const SORTS = { new: "Last updated (newest)", old: "Last updated (oldest)", az: "Name (A–Z)", za: "Name (Z–A)" };
@@ -521,6 +525,14 @@ $("#view").addEventListener("submit", (e) => {
 let editing = null;
 function fieldHtml(c, std, value, isNew) {
   const id = "f-" + c.key;
+  if (std === "FSS") {
+    const label = (html, wide = true) => `<div class="field ${wide ? "wide" : ""}" data-field="${c.key}"><span>${esc(labelOf(c, std))}${c.required ? ' <span class="req" aria-hidden="true">*</span>' : ""}</span>${html}${c.help ? `<span class="hint">${esc(c.help)}</span>` : ""}<span class="err"></span></div>`;
+    if (c.key === "places") return ""; // part of the Service Area picker
+    if (c.key === "service_area") return label(areaHtml(value, editing.row.places));
+    if (c.key === "service_type") return label(serviceTypeHtml(value), false);
+    if (c.key === "hours") return label(hoursHtml(value));
+    if (c.key === "cost") return label(costHtml(value), false);
+  }
   const req = c.required ? ' <span class="req" aria-hidden="true">*</span>' : "";
   const hint = c.help ? `<span class="hint">${esc(c.help)}</span>` : "";
   const wide = c.long || (c.terms && c.list) || ["title", "service_area", "places", "contact_url", "source_url", "document_url", "tags"].includes(c.key);
@@ -542,14 +554,16 @@ function fieldHtml(c, std, value, isNew) {
     const dl = c.suggest ? ` list="dl-${c.key}"` : "";
     input = `<input id="${id}" name="${c.key}" type="${type}" value="${esc(value)}"${dl}>${c.suggest ? `<datalist id="dl-${c.key}">${c.suggest.map((s) => `<option value="${esc(s)}">`).join("")}</datalist>` : ""}`;
   }
-  if (c.key === "title" && std === "FSS" && canPublish()) {
-    input = `<div class="lookup-row">${input}<button type="button" class="btn lookup" id="lookup">✨ Look it up</button></div>`;
-  }
-  return `<label class="field ${wide ? "wide" : ""}" data-field="${c.key}" for="${id}"><span>${esc(labelOf(c, std))}${req}</span>${input}${hint}<span class="err"></span></label>`;
+  const lookup = c.key === "title" && std === "FSS" && canPublish();
+  if (lookup) input = `<div class="lookup-row">${input}<button type="button" class="btn lookup" id="lookup">✨ Look it up</button></div><span class="lookup-status" id="lookup-status" role="status"></span>`;
+  return `<label class="field ${wide ? "wide" : ""}" data-field="${c.key}" for="${id}"><span>${esc(labelOf(c, std))}${req}</span>${input}${hint}<span class="err"></span></label>${
+    lookup ? `<details class="lookup-details wide" id="lookup-details" hidden><summary>Web Search Details</summary><div id="lookup-body"></div></details>` : ""
+  }`;
 }
 function openEditor(std, item = null) {
   editing = { std, item, allowDuplicate: false };
   const row = item?.row ?? { status: canPublish() ? "published" : "draft", review_due: std === "FSS" ? sixMonths() : "" };
+  editing.row = row;
   $("#editor-title").textContent = item ? `Edit ${NAMES[std].one}` : NAMES[std].add;
   const cols = columnsFor(std);
   let html = Object.keys(GROUPS)
@@ -567,23 +581,23 @@ function openEditor(std, item = null) {
 }
 // ---------- AI lookup (services) ----------
 // Text fields the lookup can fill, by form key.
-const LOOKUP_TEXT = ["title", "provider_name", "summary", "service_type", "service_area", "phone", "email", "contact_url", "provider_url", "availability", "eligibility", "cost", "hours", "accessibility", "source_url", "source_organization"];
+const LOOKUP_TEXT = ["title", "provider_name", "summary", "phone", "email", "contact_url", "provider_url", "availability", "eligibility", "accessibility", "source_url", "source_organization"];
 const LOOKUP_LISTS = ["categories", "audiences", "action_stages"];
 
 async function lookUp() {
   const form = $("#editor-form");
   const btn = $("#lookup");
+  const status = $("#lookup-status");
   const name = form.elements.title.value.trim();
-  const box = $("#lookup-result") || $("#editor-body").insertAdjacentElement("afterbegin", Object.assign(document.createElement("div"), { id: "lookup-result" }));
   if (name.length < 3) {
-    box.className = "lookup-note bad";
-    box.textContent = "Type the service or organization name first, then click Look it up.";
+    status.className = "lookup-status bad";
+    status.textContent = "Type the service or organization name first.";
     return;
   }
   btn.disabled = true;
   btn.textContent = "Searching…";
-  box.className = "lookup-note";
-  box.textContent = `Searching the web for “${name}”. This usually takes 20–60 seconds.`;
+  status.className = "lookup-status";
+  status.textContent = `Searching the web for “${name}”. This usually takes 20–60 seconds.`;
   try {
     const r = await fetch("/api/autofill", {
       method: "POST",
@@ -594,8 +608,8 @@ async function lookUp() {
     if (!r.ok) throw new Error(j.error || `Lookup failed (${r.status}).`);
     fillFromLookup(j);
   } catch (err) {
-    box.className = "lookup-note bad";
-    box.textContent = err.message;
+    status.className = "lookup-status bad";
+    status.textContent = err.message;
   } finally {
     btn.disabled = false;
     btn.textContent = "✨ Look it up";
@@ -606,10 +620,10 @@ function fillFromLookup({ fields, sources = [], checked_at }) {
   const form = $("#editor-form");
   const isNew = !editing.item;
   const filled = [];
+  const blank = (key) => isNew || !form.elements[key]?.value?.trim();
   const set = (key, value) => {
     const el = form.elements[key];
-    if (!el || value == null || value === "" || el.disabled) return;
-    if (!isNew && el.value.trim()) return; // editing: never overwrite what's there
+    if (!el || value == null || value === "" || el.disabled || !blank(key)) return;
     el.value = value;
     filled.push(key);
   };
@@ -621,37 +635,66 @@ function fillFromLookup({ fields, sources = [], checked_at }) {
     for (const b of boxes) b.checked = fields[k].includes(b.value);
     filled.push(k);
   }
+  if (isNew || !readServiceType(form)) { setServiceType(form, fields.service_type, fields.service_type_other); filled.push("service_type"); }
+  const areaPicked = [...form.querySelectorAll('input[name="area"]:checked')].length;
+  if (fields.areas?.length && (isNew || !areaPicked)) { setAreas(form, fields.areas); filled.push("service_area"); }
+  if ((fields.open_24_7 || fields.weekly_hours?.length) && (isNew || !readHours(form))) { setHours(form, fields.open_24_7, fields.weekly_hours); filled.push("hours"); }
+  if ((isNew || !readCost(form)) && setCost(form, fields.cost_min, fields.cost_max)) filled.push("cost");
   if (fields.source_url) {
     set("source_checked_at", checked_at);
     if (isNew) form.elements.evidence_status.value = "website_documented";
   }
   // Looked-up details start as a draft until someone has checked them.
   const status = [...form.querySelectorAll('[name="status"]')].find((x) => !x.disabled);
-  if (isNew && status && status.tagName === "SELECT") { status.value = "draft"; filled.push("status"); }
+  if (isNew && status?.tagName === "SELECT") { status.value = "draft"; filled.push("status"); }
   for (const k of filled) form.querySelector(`[data-field="${k}"]`)?.classList.add("ai-filled");
-  const box = $("#lookup-result");
-  box.className = "lookup-note ok";
-  box.innerHTML = `<strong>Filled ${filled.length} fields from a web search.</strong> Check every highlighted field against the sources before publishing. It's set to <em>Draft</em> until you change Status.${
+
+  const line = $("#lookup-status");
+  line.className = "lookup-status ok";
+  line.textContent = `Filled ${filled.length} fields (highlighted). Check them before publishing; it's set to Draft.`;
+  const details = $("#lookup-details");
+  details.hidden = false;
+  details.open = false;
+  $("#lookup-body").innerHTML = `<p>Filled from a web search on ${esc(fmtDate(checked_at))}. Check every highlighted field against the sources before publishing. It stays a <em>Draft</em> until you change Status.</p>${
     fields.notes ? `<p><strong>Double-check:</strong> ${esc(fields.notes)}</p>` : ""
-  }${sources.length ? `<p class="sub">Sources: ${sources.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noreferrer">${esc(s.title)}</a>`).join(" · ")}</p>` : ""}`;
-  box.scrollIntoView({ block: "start", behavior: "smooth" });
+  }${sources.length ? `<p class="sub"><strong>Sources:</strong></p><ul class="sources">${sources.map((x) => `<li><a href="${esc(x.url)}" target="_blank" rel="noreferrer">${esc(x.title)}</a></li>`).join("")}</ul>` : ""}`;
 }
 
-$("#editor-body").addEventListener("click", (e) => { if (e.target.closest("#lookup")) lookUp(); });
-$("#editor-body").addEventListener("input", (e) => e.target.closest(".ai-filled")?.classList.remove("ai-filled"));
-$("#editor-body").addEventListener("change", (e) => e.target.closest(".ai-filled")?.classList.remove("ai-filled"));
+const body = $("#editor-body");
+body.addEventListener("click", (e) => {
+  if (e.target.closest("#lookup")) lookUp();
+  if (e.target.closest("[data-copy-weekdays]")) copyWeekdays($("#editor-form"));
+});
+for (const type of ["input", "change"]) {
+  body.addEventListener(type, (e) => {
+    e.target.closest(".ai-filled")?.classList.remove("ai-filled");
+    markDirty(e);
+    if (type === "change") hoursEvents(e);
+  });
+}
 
 function readForm() {
   const form = $("#editor-form");
   const row = {};
   for (const c of columnsFor(editing.std)) {
     if (c.group === "system") continue;
-    if (c.terms && c.list) row[c.key] = [...form.querySelectorAll(`input[name="${c.key}"]:checked`)].map((i) => i.value).join(" | ");
+    if (c.terms && c.list) {
+      // Keep the record's own order for items still ticked, then add new ones.
+      const ticked = [...form.querySelectorAll(`input[name="${c.key}"]:checked`)].map((i) => i.value);
+      const before = String(editing.row[c.key] ?? "").split(/\s*\|\s*/).filter((v) => ticked.includes(v));
+      row[c.key] = [...new Set([...before, ...ticked])].join(" | ");
+    }
     else {
       const els = form.querySelectorAll(`[name="${c.key}"]`);
       const el = [...els].find((x) => !x.disabled);
       if (el) row[c.key] = el.value;
     }
+  }
+  if (editing.std === "FSS") {
+    row.service_type = readServiceType(form);
+    Object.assign(row, readArea(form));
+    row.hours = readHours(form);
+    row.cost = readCost(form);
   }
   return row;
 }
