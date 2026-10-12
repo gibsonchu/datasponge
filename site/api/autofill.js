@@ -43,7 +43,8 @@ const FIELDS = {
   email: str,
   contact_url: { ...str, description: "Best page for someone to get this help (intake form or program page)." },
   provider_url: { ...str, description: "The organization's homepage." },
-  availability: { type: "string", enum: keys("availability") },
+  availability: { type: "string", enum: ["yes", "no", "unsure"], description: "Are they taking new people now? unsure if no source says." },
+  availability_note: { ...str, description: 'Short detail if a source gives one, e.g. "Waitlist until March". Null otherwise.' },
   eligibility: str,
   cost_min: { type: "string", enum: ["free", "1", "2", "3", "4", "5", "unknown"], description: "Cheapest typical cost: free, 1 = under $100, 2 = $100-500, 3 = $500-2,000, 4 = $2,000-10,000, 5 = over $10,000, or unknown." },
   cost_max: { type: "string", enum: ["free", "1", "2", "3", "4", "5", "unknown"], description: "Most expensive typical cost on the same scale." },
@@ -78,7 +79,7 @@ Research the named organization or program on the web, then call fill_service_fo
 - Prefer the organization's own pages over directories and news.
 - Describe the help as it relates to flooding: preparing, cleanup, repairs, insurance, money, tenant rights, recovery.
 - If the name matches several organizations, pick the one serving NYC flood-affected people and say so in notes. If you can't identify it, set found to false.
-- availability: use listed_contact_provider unless a page clearly says otherwise.
+- availability: yes unless a source says they are paused, closed, or no longer running; unsure if you can't tell.
 - weekly_hours: only days and times a source states; empty list if unknown. Use open_24_7 for round-the-clock services.
 - cost: free programs are "free" for both ends; leave "unknown" rather than guess.
 - Write for a resident in a stressful moment: short, concrete sentences.`;

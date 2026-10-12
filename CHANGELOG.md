@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- FSS 0.1: optional `service.availability_note`, a plain-language detail about whether a service is taking people.
+
 ## 0.1.0-draft — 2026-09-21
 
 - Introduced FRS, FMS and FSS with shared identity, geography, provenance, rights and review conventions.

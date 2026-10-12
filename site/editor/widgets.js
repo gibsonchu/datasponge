@@ -233,3 +233,137 @@ export function setCost(form, lo, hi) {
   form.querySelector('[data-widget="cost"]').dataset.dirty = "1";
   return true;
 }
+
+// ---------- topics: grouped like Local Help's "I need help with" ----------
+export const TOPIC_GROUPS = [
+  ["Money & Insurance", ["business_recovery", "financial_assistance", "insurance"]],
+  ["Your Home & Building", ["building_protection", "cleanup", "drainage", "health", "housing", "relocation"]],
+  ["Recovery & Support", ["legal_assistance", "recovery", "referrals", "reporting", "shelter", "supplies"]],
+  ["Getting Ready", ["alerts", "planning", "preparedness", "risk_mapping", "training"]],
+  ["Community & Public Spaces", ["community_organizing", "infrastructure", "monitoring", "observed_impacts", "public_space", "transportation"]],
+];
+export function topicsHtml(terms, value) {
+  const chosen = new Set(String(value ?? "").split(/\s*[|;,]\s*/).filter(Boolean));
+  const label = new Map(terms.map((t) => [t.key, t.label]));
+  const grouped = new Set(TOPIC_GROUPS.flatMap(([, ks]) => ks));
+  const groups = [...TOPIC_GROUPS, ["Other", terms.map((t) => t.key).filter((k) => !grouped.has(k))]].filter(([, ks]) => ks.length);
+  return groups
+    .map(([g, ks]) => `<p class="pick-head">${esc(g)}</p><div class="checks">${[...ks]
+      .sort((a, b) => (label.get(a) ?? a).localeCompare(label.get(b) ?? b))
+      .map((k) => `<label><input type="checkbox" name="categories" value="${k}" ${chosen.has(k) ? "checked" : ""}>${esc(label.get(k) ?? k)}</label>`)
+      .join("")}</div>`)
+    .join("");
+}
+
+// ---------- when: before / during / after the flood ----------
+const PHASES = [["before", "Before a flood", ["prepare", "understand", "adapt"]], ["during", "During a flood", ["respond"]], ["after", "After a flood", ["recover"]]];
+export function stagesHtml(value) {
+  const have = String(value ?? "").split(/\s*\|\s*/).filter(Boolean);
+  return `<div class="checks" data-widget="stages" data-orig="${esc(value ?? "")}">${PHASES.map(([k, l, stages]) => `<label><input type="checkbox" name="phase" value="${k}" ${stages.some((s) => have.includes(s)) ? "checked" : ""}>${l}</label>`).join("")}</div>`;
+}
+export function readStages(form) {
+  const w = form.querySelector('[data-widget="stages"]');
+  if (!touched(w)) return w.dataset.orig;
+  const have = w.dataset.orig.split(/\s*\|\s*/).filter(Boolean);
+  const out = [];
+  for (const [k, , stages] of PHASES) {
+    if (!form.querySelector(`input[name="phase"][value="${k}"]`).checked) continue;
+    const kept = stages.filter((s) => have.includes(s));
+    out.push(...(kept.length ? kept : [stages[0]]));
+  }
+  return out.join(" | ");
+}
+export function setStages(form, stages) {
+  for (const [k, , ss] of PHASES) form.querySelector(`input[name="phase"][value="${k}"]`).checked = ss.some((s) => stages.includes(s));
+  form.querySelector('[data-widget="stages"]').dataset.dirty = "1";
+}
+
+// ---------- chips: type, press Enter, remove with × ----------
+export function chipsHtml(name, value, placeholder) {
+  const items = String(value ?? "").split(/\s*\|\s*/).filter(Boolean);
+  return `<div class="chips-input" data-chips="${name}">
+    <input type="hidden" name="${name}" value="${esc(items.join(" | "))}">
+    <span class="chip-list">${items.map(chip).join("")}</span>
+    <input class="chip-entry" placeholder="${esc(placeholder)}" aria-label="${esc(placeholder)}">
+  </div>`;
+}
+const chip = (t) => `<span class="chip" data-value="${esc(t)}">${esc(t)}<button type="button" aria-label="Remove ${esc(t)}">×</button></span>`;
+function syncChips(box) {
+  box.querySelector('input[type="hidden"]').value = [...box.querySelectorAll(".chip")].map((c) => c.dataset.value).join(" | ");
+}
+export function addChip(box, text) {
+  const t = text.trim().replace(/\s*\|\s*/g, " ");
+  if (!t || [...box.querySelectorAll(".chip")].some((c) => c.dataset.value.toLowerCase() === t.toLowerCase())) return;
+  box.querySelector(".chip-list").insertAdjacentHTML("beforeend", chip(t));
+  syncChips(box);
+}
+export function setChips(form, name, items) {
+  const box = form.querySelector(`[data-chips="${name}"]`);
+  box.querySelector(".chip-list").innerHTML = "";
+  for (const t of items) addChip(box, t);
+}
+export function chipEvents(e) {
+  const box = e.target.closest("[data-chips]");
+  if (!box) return;
+  if (e.type === "click" && e.target.closest(".chip button")) {
+    e.target.closest(".chip").remove();
+    syncChips(box);
+    box.closest(".field")?.classList.remove("ai-filled");
+  }
+  if (e.type === "keydown" && e.target.classList.contains("chip-entry") && (e.key === "Enter" || e.key === ",")) {
+    e.preventDefault();
+    addChip(box, e.target.value);
+    e.target.value = "";
+  }
+  if (e.type === "focusout" && e.target.classList.contains("chip-entry") && e.target.value.trim()) {
+    addChip(box, e.target.value);
+    e.target.value = "";
+  }
+}
+
+// ---------- taking new people? ----------
+const YES = ["listed_contact_provider", "confirmed_available", "request_subject_to_capacity", "deadline_listed", "expression_of_interest", "event_dependent"];
+const NO = ["temporarily_unavailable", "closed", "historical"];
+const answerOf = (key) => (YES.includes(key) ? "yes" : NO.includes(key) ? "no" : key ? "unsure" : "yes");
+export function availabilityHtml(key, note) {
+  const a = answerOf(key);
+  return `<div class="avail-pick" data-widget="availability" data-orig="${esc(key ?? "")}">
+    <div class="seg-row" role="radiogroup" aria-label="Taking new people?">
+      ${[["yes", "Yes"], ["no", "No"], ["unsure", "Not sure"]].map(([v, l]) => `<label class="seg-opt"><input type="radio" name="avail_answer" value="${v}" ${a === v ? "checked" : ""}><span>${l}</span></label>`).join("")}
+    </div>
+    <input name="availability_note" value="${esc(note ?? "")}" placeholder="Details (optional), e.g. Waitlist until March" aria-label="Availability details">
+  </div>`;
+}
+export function readAvailability(form) {
+  const w = form.querySelector('[data-widget="availability"]');
+  const answer = form.querySelector('input[name="avail_answer"]:checked')?.value ?? "yes";
+  const orig = w.dataset.orig;
+  // Keep the precise original value when the answer didn't change.
+  const availability = answerOf(orig) === answer && orig ? orig : { yes: "listed_contact_provider", no: "closed", unsure: "intake_unconfirmed" }[answer];
+  return { availability, availability_note: form.elements.availability_note.value.trim() };
+}
+export function setAvailability(form, answer, note) {
+  const r = form.querySelector(`input[name="avail_answer"][value="${answer}"]`);
+  if (r) r.checked = true;
+  if (note) form.elements.availability_note.value = note;
+}
+
+// ---------- which details matter for a type of service ----------
+const KIND = {
+  contractor: ["plumbing", "sewer_cleaning", "waterproofing", "backwater_valve", "sump_pump_install", "mold_remediation", "mold_assessment", "cleanup"],
+  program: ["financial_help", "insurance_help", "small_business_support", "workforce", "green_infrastructure", "climate_resilience"],
+};
+const DETAILS_FOR = {
+  contractor: ["availability", "cost", "hours", "service_languages", "accessibility"],
+  program: ["availability", "eligibility", "deadline", "cost", "hours", "service_languages"],
+  organization: ["availability", "eligibility", "cost", "hours", "service_languages", "accessibility"],
+};
+export const DETAIL_KEYS = ["availability", "eligibility", "cost", "hours", "deadline", "service_languages", "accessibility"];
+export function kindOf(type) {
+  if (!type) return null;
+  return KIND.contractor.includes(type) ? "contractor" : KIND.program.includes(type) ? "program" : "organization";
+}
+export function detailsFor(type) {
+  const k = kindOf(type);
+  return k ? DETAILS_FOR[k] : DETAIL_KEYS;
+}

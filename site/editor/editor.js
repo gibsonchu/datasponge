@@ -15,7 +15,8 @@ import {
 } from "./records.js";
 import {
   serviceTypeHtml, readServiceType, setServiceType, areaHtml, readArea, setAreas, hoursHtml, readHours, setHours, hoursEvents, copyWeekdays,
-  costHtml, readCost, setCost, markDirty,
+  costHtml, readCost, setCost, markDirty, topicsHtml, stagesHtml, readStages, setStages, chipsHtml, setChips, chipEvents,
+  availabilityHtml, readAvailability, setAvailability, detailsFor, DETAIL_KEYS,
 } from "./widgets.js";
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -525,16 +526,23 @@ $("#view").addEventListener("submit", (e) => {
 let editing = null;
 function fieldHtml(c, std, value, isNew) {
   const id = "f-" + c.key;
+  const label = (html, wide = true, help = c.help) => `<div class="field ${wide ? "wide" : ""}" data-field="${c.key}"><span>${esc(labelOf(c, std))}${c.required ? ' <span class="req" aria-hidden="true">*</span>' : ""}</span>${html}${help ? `<span class="hint">${esc(help)}</span>` : ""}<span class="err"></span></div>`;
+  // Pickers explain themselves; the column help is for the CSV guide.
+  if (c.key === "categories") return label(topicsHtml(TERMS.topic, value), true, "");
+  if (c.key === "action_stages") return label(stagesHtml(value), true, "");
+  if (c.key === "tags") return label(chipsHtml("tags", value, "Add a tag and press Enter"));
   if (std === "FSS") {
-    const label = (html, wide = true) => `<div class="field ${wide ? "wide" : ""}" data-field="${c.key}"><span>${esc(labelOf(c, std))}${c.required ? ' <span class="req" aria-hidden="true">*</span>' : ""}</span>${html}${c.help ? `<span class="hint">${esc(c.help)}</span>` : ""}<span class="err"></span></div>`;
-    if (c.key === "places") return ""; // part of the Service Area picker
+    if (c.key === "places" || c.key === "availability_note") return ""; // part of the Service Area / availability pickers
+    if (c.key === "availability") return label(availabilityHtml(value, editing.row.availability_note));
+    if (c.key === "service_languages") return label(chipsHtml("service_languages", value, "Add a language and press Enter"), false);
     if (c.key === "service_area") return label(areaHtml(value, editing.row.places));
     if (c.key === "service_type") return label(serviceTypeHtml(value), false);
     if (c.key === "hours") return label(hoursHtml(value));
     if (c.key === "cost") return label(costHtml(value), false);
   }
   const req = c.required ? ' <span class="req" aria-hidden="true">*</span>' : "";
-  const hint = c.help ? `<span class="hint">${esc(c.help)}</span>` : "";
+  const help = c.date ? c.help.replace(/^YYYY-MM-DD\.?\s*/, "") : c.help;
+  const hint = help ? `<span class="hint">${esc(help)}</span>` : "";
   const wide = c.long || (c.terms && c.list) || ["title", "service_area", "places", "contact_url", "source_url", "document_url", "tags"].includes(c.key);
   if (c.terms && c.list) {
     const chosen = new Set(String(value ?? "").split(/\s*[|;,]\s*/).filter(Boolean));
@@ -562,6 +570,7 @@ function fieldHtml(c, std, value, isNew) {
 }
 function openEditor(std, item = null) {
   editing = { std, item, allowDuplicate: false };
+  showAllDetails = false;
   const row = item?.row ?? { status: canPublish() ? "published" : "draft", review_due: std === "FSS" ? sixMonths() : "" };
   editing.row = row;
   $("#editor-title").textContent = item ? `Edit ${NAMES[std].one}` : NAMES[std].add;
@@ -569,7 +578,12 @@ function openEditor(std, item = null) {
   let html = Object.keys(GROUPS)
     .map((g) => [g, cols.filter((c) => c.group === g)])
     .filter(([, cs]) => cs.length)
-    .map(([g, cs]) => `<fieldset class="fgroup"><legend>${GROUPS[g]}</legend>${cs.map((c) => fieldHtml(c, std, row[c.key], !item)).join("")}</fieldset>`)
+    .map(([g, cs]) => {
+      const main = cs.filter((c) => !c.advanced).map((c) => fieldHtml(c, std, row[c.key], !item)).join("");
+      const more = cs.filter((c) => c.advanced).map((c) => fieldHtml(c, std, row[c.key], !item)).join("");
+      const extra = g === "details" && std === "FSS" ? `<p class="details-note wide" id="details-note" hidden></p>` : "";
+      return `<fieldset class="fgroup" data-group="${g}"><legend>${GROUPS[g]}</legend>${extra}${main}${more ? `<details class="more-review wide"><summary>More review details</summary><div class="fgroup">${more}</div></details>` : ""}</fieldset>`;
+    })
     .join("");
   if (item) html += `<p class="sub" style="margin-top:18px">DataSponge id <code>${esc(row.id)}</code> · local id <code>${esc(row.local_id)}</code> · version ${item.record.metadata.record_version}</p>`;
   if (!canPublish()) html = `<p class="notice">As a contributor you can save drafts. An editor publishes them.</p>` + html;
@@ -577,12 +591,13 @@ function openEditor(std, item = null) {
   $("#editor-error").textContent = "";
   $("#editor-save").textContent = item ? "Save changes" : `Add ${NAMES[std].one}`;
   $("#editor").showModal();
+  if (std === "FSS") showDetailsFor();
   $("#editor-body [data-field=title] input")?.focus();
 }
 // ---------- AI lookup (services) ----------
 // Text fields the lookup can fill, by form key.
-const LOOKUP_TEXT = ["title", "provider_name", "summary", "phone", "email", "contact_url", "provider_url", "availability", "eligibility", "accessibility", "source_url", "source_organization"];
-const LOOKUP_LISTS = ["categories", "audiences", "action_stages"];
+const LOOKUP_TEXT = ["title", "provider_name", "summary", "phone", "email", "contact_url", "provider_url", "eligibility", "accessibility", "source_url", "source_organization"];
+const LOOKUP_LISTS = ["categories", "audiences"];
 
 async function lookUp() {
   const form = $("#editor-form");
@@ -628,7 +643,9 @@ function fillFromLookup({ fields, sources = [], checked_at }) {
     filled.push(key);
   };
   for (const k of LOOKUP_TEXT) set(k, fields[k]);
-  set("service_languages", (fields.service_languages || []).join(" | "));
+  if (fields.service_languages?.length && blank("service_languages")) { setChips(form, "service_languages", fields.service_languages); filled.push("service_languages"); }
+  if (fields.action_stages?.length && (isNew || !readStages(form))) { setStages(form, fields.action_stages); filled.push("action_stages"); }
+  if (fields.availability && isNew) { setAvailability(form, fields.availability, fields.availability_note); filled.push("availability"); }
   for (const k of LOOKUP_LISTS) {
     const boxes = [...form.querySelectorAll(`input[name="${k}"]`)];
     if (!fields[k]?.length || (!isNew && boxes.some((b) => b.checked))) continue;
@@ -644,6 +661,7 @@ function fillFromLookup({ fields, sources = [], checked_at }) {
     set("source_checked_at", checked_at);
     if (isNew) form.elements.evidence_status.value = "website_documented";
   }
+  showDetailsFor();
   // Looked-up details start as a draft until someone has checked them.
   const status = [...form.querySelectorAll('[name="status"]')].find((x) => !x.disabled);
   if (isNew && status?.tagName === "SELECT") { status.value = "draft"; filled.push("status"); }
@@ -664,13 +682,41 @@ const body = $("#editor-body");
 body.addEventListener("click", (e) => {
   if (e.target.closest("#lookup")) lookUp();
   if (e.target.closest("[data-copy-weekdays]")) copyWeekdays($("#editor-form"));
+  if (e.target.closest("[data-show-all]")) { showAllDetails = true; showDetailsFor(); }
+  chipEvents(e);
 });
+body.addEventListener("keydown", chipEvents);
+body.addEventListener("focusout", chipEvents);
 for (const type of ["input", "change"]) {
   body.addEventListener(type, (e) => {
     e.target.closest(".ai-filled")?.classList.remove("ai-filled");
     markDirty(e);
     if (type === "change") hoursEvents(e);
+    if (type === "change" && e.target.name === "service_type") showDetailsFor();
   });
+}
+
+// Show the details that matter for the chosen type of service. Fields that
+// already have a value always show, and "Show all details" reveals the rest.
+let showAllDetails = false;
+function showDetailsFor() {
+  const form = $("#editor-form");
+  const type = readServiceType(form);
+  const wanted = new Set(detailsFor(type));
+  const row = readForm();
+  let hidden = 0;
+  for (const k of DETAIL_KEYS) {
+    const el = form.querySelector(`[data-field="${k}"]`);
+    if (!el) continue;
+    const show = showAllDetails || !type || wanted.has(k) || Boolean(String(row[k] ?? "").trim());
+    el.hidden = !show;
+    if (!show) hidden++;
+  }
+  const note = $("#details-note");
+  note.hidden = !type;
+  note.innerHTML = type
+    ? `Showing the details that usually matter for <strong>${esc(form.elements.service_type.selectedOptions[0]?.textContent ?? "this type")}</strong>.${hidden ? ` <button type="button" class="link-btn" data-show-all>Show all details (${hidden} more)</button>` : ""}`
+    : "";
 }
 
 function readForm() {
@@ -690,7 +736,10 @@ function readForm() {
       if (el) row[c.key] = el.value;
     }
   }
+  row.action_stages = readStages(form);
   if (editing.std === "FSS") {
+    Object.assign(row, readAvailability(form));
+    if (!row.source_url?.trim()) row.source_url = row.contact_url || row.provider_url || "";
     row.service_type = readServiceType(form);
     Object.assign(row, readArea(form));
     row.hours = readHours(form);

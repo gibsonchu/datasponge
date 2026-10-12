@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/gibsonchu/datasponge/raw/main/standards/fss.schema.json",
-  "title": "FSS 0.1.0 \u2014 Draft",
+  "title": "FSS 0.1.0 — Draft",
   "type": "object",
   "properties": {
     "id": {
@@ -385,6 +385,13 @@
             "temporarily_unavailable",
             "closed"
           ]
+        },
+        "availability_note": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Optional plain-language detail about availability, e.g. \"Waitlist until March\" or \"Paused while they rebuild\"."
         },
         "contact_url": {
           "type": [

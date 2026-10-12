@@ -1,6 +1,6 @@
 # Supabase reference implementation
 
-This is a pilot editorial catalog, not a canonical-document ingestion API yet. Apply `001` through `008` in order to a **new Supabase project** using migrations. Do not run the baseline on an existing DataSponge installation. Supabase Auth and the `pg_jsonschema` extension are required. The SQL installs its bundled draft schemas; the JSON files in `standards/` describe interchange documents.
+This is a pilot editorial catalog, not a canonical-document ingestion API yet. Apply `001` through `010` in order to a **new Supabase project** using migrations. Do not run the baseline on an existing DataSponge installation. Supabase Auth and the `pg_jsonschema` extension are required. The SQL installs its bundled draft schemas; the JSON files in `standards/` describe interchange documents.
 
 Keep `fc_private` out of the Data API's exposed schemas. Only `public` is exposed. Public reads use `fc_records` and return reviewed standard documents. `fc_current_catalog` also excludes closed, historical, temporarily unavailable, and expired help listings. Raw catalog writes are denied. Drafts are scoped to authenticated members, and publication requires an editor or administrator.
 
@@ -36,3 +36,7 @@ Hosted media and coordinate publication are disabled in this pilot. Public relat
 - People (admins): `fc_members`, `fc_add_member(email, role)` (joins on first sign-in if they have no account yet), `fc_update_member`, `fc_remove_pending_member`.
 - `fc_activity(max_rows)`: who did what, newest first.
 - The pilot research drafts are marked `retired`, which keeps them out of the Editor; they stay in history.
+
+## 010: availability note
+
+FSS 0.1 gains an optional `service.availability_note`, a short plain-language detail about whether a service is taking people ("Waitlist until March"). Optional, so existing records stay valid.

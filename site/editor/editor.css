@@ -162,9 +162,37 @@ dialog#editor { width: min(780px, calc(100% - 24px)); max-height: calc(100vh - 2
 .day-row input[type=time] { padding: 6px 8px; }
 .day-row input[type=time]:disabled { opacity: 0.4; }
 .days .link-btn { justify-self: start; font-size: 13px; }
-.cost-pick { display: flex; gap: 12px; flex-wrap: wrap; }
-.cost-pick label.inline select { min-width: 190px; }
+.cost-pick { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.cost-pick label.inline { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.cost-pick label.inline select { min-width: 0; width: auto; }
 .cost-pick .hint { flex-basis: 100%; }
+
+/* Field titles: bold everywhere, including picker fields */
+.field > span:first-child { font-weight: 600; font-size: 14px; }
+
+/* Chips input (tags, languages) */
+.chips-input { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 8px; border: 1px solid #b9c9d4; border-radius: 8px; background: #fff; }
+.chips-input:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px rgb(22 75 231 / 15%); }
+.chips-input .chip-list { display: contents; }
+.chips-input .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--blue-soft); color: var(--ink); border-radius: 999px; padding: 3px 4px 3px 10px; font-size: 14px; font-weight: 600; }
+.chips-input .chip button { border: 0; background: none; font-size: 16px; line-height: 1; padding: 0 4px; color: var(--muted); }
+.chips-input .chip-entry { flex: 1; min-width: 160px; border: 0; padding: 4px; box-shadow: none; }
+.chips-input .chip-entry:focus { box-shadow: none; }
+
+/* Yes / No / Not sure */
+.avail-pick { display: grid; gap: 8px; }
+.seg-row { display: inline-flex; border: 1px solid #b9c9d4; border-radius: 10px; overflow: hidden; width: fit-content; }
+.seg-opt { display: block; cursor: pointer; font-weight: 600; }
+.seg-opt input { position: absolute; opacity: 0; width: 1px; }
+.seg-opt span { display: block; padding: 8px 18px; }
+.seg-opt input:checked + span { background: var(--ink); color: #fff; }
+.seg-opt input:focus-visible + span { outline: 3px solid var(--blue); outline-offset: -3px; }
+
+.details-note { margin: 0; font-size: 14px; color: var(--muted); grid-column: 1 / -1; }
+.more-review { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 10px; }
+.more-review summary { cursor: pointer; font-weight: 700; color: var(--blue); }
+.more-review > .fgroup { margin-top: 10px; }
+.field[hidden] { display: none; }
 
 /* Panels (import, inbox, people) */
 .panel { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); }
