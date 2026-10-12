@@ -1,6 +1,6 @@
 # Draft governance and versioning
 
-Floodline is the founding steward of Flood Commons. This repository establishes an initial working process, not a claim that an independent foundation, formal voting membership, or elected board already exists.
+Floodline is the founding steward of DataSponge. This repository establishes an initial working process, not a claim that an independent foundation, formal voting membership, or elected board already exists.
 
 Proposals are discussed in public issues; changes are reviewed through pull requests. Keep use cases, disagreements, alternatives, and migration effects visible. Recruit representatives from community organizations, government, research, and implementers as participation grows.
 

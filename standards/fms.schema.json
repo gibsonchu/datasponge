@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/gibsonchu/flood-commons/raw/main/standards/fms.schema.json",
+  "$id": "https://github.com/gibsonchu/datasponge/raw/main/standards/fms.schema.json",
   "title": "FMS 0.1.0 \u2014 Draft",
   "type": "object",
   "properties": {

@@ -1,18 +1,18 @@
 /**
- * Flood Commons Workspace.
+ * DataSponge Editor.
  *
- * Staff sign in with their own Flood Commons (Supabase Auth) account. Every
+ * Staff sign in with their own DataSponge (Supabase Auth) account. Every
  * read and write goes through the database's own access rules with the
  * signer's token: members see records in their scope, contributors can save
  * drafts, editors publish, admins also manage people. The page holds no
  * privileges of its own; it uses only the publishable key.
  *
  * Services (FSS) and answers & resources (FRS) are edited as flat rows defined
- * in fc.js, the same columns as the CSV template and column guide.
+ * in records.js, the same columns as the CSV template and column guide.
  */
 import {
   TERMS, STATUSES, AUDIENCES, columnsFor, labelOf, fromRow, applyRow, toRow, validate, sameRecord, normChoice, today, sixMonths,
-} from "./fc.js";
+} from "./records.js";
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -485,7 +485,7 @@ $("#view").addEventListener("click", async (e) => {
   if (t.dataset.trash) {
     const item = data.items.find((i) => i.id === t.dataset.trash);
     if (!confirm(`Move “${item.record.title}” to the trash? It stops being public. You can restore it from Trash.`)) return;
-    return act(() => rpc("fc_set_record_status", { record: item.id, target: "trash", reason: "Trashed in the Workspace" }), "Moved to trash.");
+    return act(() => rpc("fc_set_record_status", { record: item.id, target: "trash", reason: "Trashed in the Editor" }), "Moved to trash.");
   }
   if (t.dataset.restore) return act(() => rpc("fc_set_record_status", { record: t.dataset.restore, target: "restore" }), "Restored as a draft. Publish it when it's ready.");
   if (t.dataset.removal) {
@@ -554,7 +554,7 @@ function openEditor(std, item = null) {
     .filter(([, cs]) => cs.length)
     .map(([g, cs]) => `<fieldset class="fgroup"><legend>${GROUPS[g]}</legend>${cs.map((c) => fieldHtml(c, std, row[c.key], !item)).join("")}</fieldset>`)
     .join("");
-  if (item) html += `<p class="sub" style="margin-top:18px">Flood Commons id <code>${esc(row.id)}</code> · local id <code>${esc(row.local_id)}</code> · version ${item.record.metadata.record_version}</p>`;
+  if (item) html += `<p class="sub" style="margin-top:18px">DataSponge id <code>${esc(row.id)}</code> · local id <code>${esc(row.local_id)}</code> · version ${item.record.metadata.record_version}</p>`;
   if (!canPublish()) html = `<p class="notice">As a contributor you can save drafts. An editor publishes them.</p>` + html;
   $("#editor-body").innerHTML = html;
   $("#editor-error").textContent = "";
@@ -652,7 +652,7 @@ function importView() {
         <label><input type="radio" name="std" value="FSS" ${std === "FSS" ? "checked" : ""}><span>Services</span></label>
         <label><input type="radio" name="std" value="FRS" ${std === "FRS" ? "checked" : ""}><span>Answers &amp; resources</span></label>
       </div>
-      <p>Columns follow the Flood Commons ${std === "FSS" ? "Flood Services Standard (FSS 0.1)" : "Flood Resource Standard (FRS 0.1)"}. Start from the template, or download what's already there, edit it in Excel or Google Sheets, and upload it back.</p>
+      <p>Columns follow the DataSponge ${std === "FSS" ? "Flood Services Standard (FSS 0.1)" : "Flood Resource Standard (FRS 0.1)"}. Start from the template, or download what's already there, edit it in Excel or Google Sheets, and upload it back.</p>
       <div class="bar"><button class="btn" data-template>Download blank template</button><button class="btn" data-export>Download current ${NAMES[std].many.toLowerCase()} (${existing.length})</button></div>
     </section>
     <section class="panel">
@@ -665,7 +665,7 @@ function importView() {
     <section class="panel">
       <h2>Column guide</h2>
       <p>Required columns are marked *. Separate multiple values with <code>|</code>. Dates are <code>YYYY-MM-DD</code>. Column names can also be the labels shown in the form.</p>
-      <div class="scroll"><table class="table guide"><thead><tr><th>Column</th><th>Meaning</th><th>Flood Commons field</th><th>Allowed values</th></tr></thead><tbody>${columnsFor(std)
+      <div class="scroll"><table class="table guide"><thead><tr><th>Column</th><th>Meaning</th><th>DataSponge field</th><th>Allowed values</th></tr></thead><tbody>${columnsFor(std)
         .map((c) => `<tr><td>${esc(c.key)}${c.required ? ' <span class="req">*</span>' : ""}</td><td><strong>${esc(labelOf(c, std))}</strong><div class="sub">${esc(c.help)}</div></td><td><code>${esc(c.fc)}</code></td><td class="sub">${c.terms ? TERMS[c.terms].map((t) => `<code>${esc(t.key)}</code>`).join(" ") : c.suggest ? "Suggested: " + c.suggest.map((s) => `<code>${esc(s)}</code>`).join(" ") : c.def ? `Default <code>${esc(c.def)}</code>` : ""}</td></tr>`)
         .join("")}</tbody></table></div>
     </section></div>`;
@@ -782,8 +782,8 @@ function wireImport() {
   drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); if (e.dataTransfer.files[0]) parseFile(e.dataTransfer.files[0]); };
   for (const r of document.querySelectorAll('input[name="std"]')) r.onchange = () => { ui.importStd = r.value; ui.importResult = null; ui.importFile = null; ui.ignored = []; render(); };
   const std = ui.importStd;
-  $("[data-template]").onclick = () => download(`flood-commons-${stdName(std)}-template.csv`, toCsv(importKeys(std), [EXAMPLE[std]]));
-  $("[data-export]").onclick = () => download(`flood-commons-${stdName(std)}-${today()}.csv`, toCsv(importKeys(std), data.items.filter((i) => i.standard === std && i.status !== "excluded").map((i) => i.row)));
+  $("[data-template]").onclick = () => download(`datasponge-${stdName(std)}-template.csv`, toCsv(importKeys(std), [EXAMPLE[std]]));
+  $("[data-export]").onclick = () => download(`datasponge-${stdName(std)}-${today()}.csv`, toCsv(importKeys(std), data.items.filter((i) => i.standard === std && i.status !== "excluded").map((i) => i.row)));
   const commit = $("[data-commit]");
   if (commit) commit.onclick = () => { commit.disabled = true; commitImport(); };
   const clear = $("[data-clear-import]");
@@ -856,7 +856,7 @@ async function logView() {
 // ---------- boot ----------
 if (!cfg.url || !cfg.key) {
   show("login");
-  $("#login-msg").textContent = "This site isn't connected to a Flood Commons database yet (site/config.json).";
+  $("#login-msg").textContent = "This site isn't connected to a DataSponge database yet (site/config.json).";
 } else {
   const type = takeHashSession();
   if (type === "recovery") show("set-password");

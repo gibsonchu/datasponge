@@ -1,10 +1,10 @@
 /**
- * Flood Commons 0.1 <-> flat rows, in the browser.
+ * DataSponge 0.1 <-> flat rows, in the browser.
  *
  * Staff edit services (FSS) and answers & resources (FRS) as flat rows: one
  * form, or one CSV row. COLUMNS is the single source of truth for the form,
  * the CSV template, and the column guide. Records are validated here against
- * the Flood Commons JSON Schemas (../standards) for friendly field errors; the
+ * the DataSponge JSON Schemas (../standards) for friendly field errors; the
  * database validates them again on save.
  */
 import Ajv2020 from "https://esm.sh/ajv@8.17.1/dist/2020?bundle";
@@ -19,7 +19,7 @@ const VALIDATORS = { FSS: ajv.compile(FSS), FRS: ajv.compile(FRS) };
 export const SCHEMA_VERSION = "0.1.0";
 export const STATUSES = ["published", "draft", "hidden"];
 export const AUDIENCES = ["public", "internal"];
-export const PUBLISHER = { id: "https://github.com/gibsonchu/flood-commons", name: "Flood Commons" };
+export const PUBLISHER = { id: "https://github.com/gibsonchu/datasponge", name: "DataSponge" };
 
 const terms = (dim) => TAXONOMY.filter((t) => t.dimension === dim).map((t) => ({ key: t.key, label: t.label }));
 export const TERMS = {
@@ -42,14 +42,14 @@ export const SERVICE_TYPES = [
 export const RESOURCE_TYPES = ["faq_answer", "guide", "report", "fact_sheet", "map", "dataset", "policy", "video", "toolkit"];
 
 /**
- * key: CSV column / form field. fc: the Flood Commons field it fills. std: which standards use it.
+ * key: CSV column / form field. fc: the DataSponge field it fills. std: which standards use it.
  * list: "|"-separated in CSV. terms: taxonomy dimension. def: default.
  */
 export const COLUMNS = [
-  { key: "id", std: ["FSS", "FRS"], group: "system", fc: "id", help: "Flood Commons record id (urn:uuid:…). Leave blank for new records; keep it to update one." },
+  { key: "id", std: ["FSS", "FRS"], group: "system", fc: "id", help: "DataSponge record id (urn:uuid:…). Leave blank for new records; keep it to update one." },
   { key: "local_id", std: ["FSS", "FRS"], group: "system", fc: "local_id", help: "Short id. Leave blank for new records; keep it to update one." },
-  { key: "status", std: ["FSS", "FRS"], group: "visibility", terms: "status", def: "published", label: "Status", fc: "(Flood Commons status)", help: "published is live. draft is a work in progress. hidden takes it offline. Only editors can publish." },
-  { key: "audience", std: ["FSS", "FRS"], group: "visibility", terms: "visibility", def: "public", label: "Who can see it", fc: "(Flood Commons audience)", help: "public shows it on Local Help and to the AI. internal is AI-only." },
+  { key: "status", std: ["FSS", "FRS"], group: "visibility", terms: "status", def: "published", label: "Status", fc: "(DataSponge status)", help: "published is live. draft is a work in progress. hidden takes it offline. Only editors can publish." },
+  { key: "audience", std: ["FSS", "FRS"], group: "visibility", terms: "visibility", def: "public", label: "Who can see it", fc: "(DataSponge audience)", help: "public shows it on Local Help and to the AI. internal is AI-only." },
   { key: "title", std: ["FSS", "FRS"], group: "basics", required: true, label: { FSS: "Service name", FRS: "Title or question" }, fc: "title", help: "" },
   { key: "summary", std: ["FSS", "FRS"], group: "basics", required: true, long: true, label: { FSS: "What they do", FRS: "Summary or answer" }, fc: "summary", help: "Plain language." },
   { key: "provider_name", std: ["FSS"], group: "basics", label: "Provider (organization)", fc: "service.provider.name", help: "Defaults to the service name." },
@@ -115,7 +115,7 @@ export function newIds(std) {
   return { id: `urn:uuid:${uuid}`, local_id: `fc-${std.toLowerCase()}-${uuid.slice(0, 8)}` };
 }
 
-/** Flat row (+ the existing record, when updating) -> Flood Commons record. */
+/** Flat row (+ the existing record, when updating) -> DataSponge record. */
 export function fromRow(std, row, existing = null, now = new Date().toISOString()) {
   const v = (k) => clean(row[k]) || clean(COLUMNS.find((c) => c.key === k)?.def);
   const L = (k) => list(v(k));
@@ -191,7 +191,7 @@ export function applyRow(std, row, existing, meta = {}) {
   return fromRow(std, { ...toRow(existing, meta), ...present }, existing);
 }
 
-/** Flood Commons record -> flat row (for editing and CSV export). */
+/** DataSponge record -> flat row (for editing and CSV export). */
 export function toRow(r, { status = "published", audience = "public" } = {}) {
   const s = r.service ?? {};
   const row = {

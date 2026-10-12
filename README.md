@@ -1,10 +1,18 @@
-# Flood Commons
+# DataSponge
 
 Open-source data infrastructure for flood resilience, founded and stewarded by **Floodline**.
 
-**[Browse the live example catalog](https://flood-commons.vercel.app)** — three synthetic records demonstrating FRS, FMS, and FSS. They are not real resources, observations, or available services.
+DataSponge soaks up flood information from many sources (organizations, city programs, contractors, guides, resident footage) and keeps it in one shared, reviewed database. Everything FloodLine publishes reads from it:
 
-Flood Commons defines practical ways to organize, publish, and exchange flood information. **Blue Dots** is a community-facing Floodline product that can consume this data. Governments, researchers, community groups, organizations, and developers can implement the specifications independently.
+| Uses DataSponge | What it shows |
+|---|---|
+| [Local Help](https://flooding-local-help.vercel.app) | Public services and quick answers |
+| [Flood Clips](https://flood-clips.vercel.app) | Resident flood footage on a map |
+| Flood Chat | The AI assistant, which can also use AI-only records |
+
+**[DataSponge Editor](https://datasponge.vercel.app/editor/)** is where people update that data without touching code: add or edit a listing, publish or hide it, choose Public or AI-only, upload a spreadsheet, and review clips. A change published there appears on Local Help the next time someone loads the page.
+
+The [DataSponge site](https://datasponge.vercel.app) also lets anyone browse the published catalog and the standards. DataSponge defines practical ways to organize, publish, and exchange flood information, and governments, researchers, community groups, and developers can implement the specifications independently.
 
 ## Three draft standards
 
@@ -36,7 +44,7 @@ npm test
 npm run preview
 ```
 
-Open `http://localhost:8080`. The repository's example catalog contains **three explicitly synthetic records**, not real assistance listings. Search, collection/place/topic filters, record details, JSON download, standards downloads, and the published catalog adapter are included.
+Open `http://localhost:8080`. The example catalog contains **three explicitly synthetic records**; switch to the published catalog to see live records. Search, collection/place/topic filters, record details, JSON download, standards downloads, and the published catalog adapter are included.
 
 To connect your own published catalog, configure `site/config.json` with a Supabase project URL and **publishable** key. Never put a secret/service-role key there. Read the database setup instructions first. This repository does not contain the steward's unreviewed 60-record research corpus, personal administrator enrollment, or credentials.
 
@@ -48,10 +56,18 @@ A document about a program belongs in FRS; a concrete service/intake offering be
 
 ## Licensing
 
-Original code, JSON schemas, and synthetic examples are available under [MIT](LICENSE). Original prose documentation is [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (attribute “Flood Commons contributors”). Third-party records and media retain their own rights. No software or specification license here grants rights to reuse third-party photographs, videos, source documents, or logos.
+Original code, JSON schemas, and synthetic examples are available under [MIT](LICENSE). Original prose documentation is [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (attribute “DataSponge contributors”). Third-party records and media retain their own rights. No software or specification license here grants rights to reuse third-party photographs, videos, source documents, or logos.
 
-## Workspace
+## DataSponge Editor
 
-`site/workspace/` (served at `/workspace/`) is where Flood Commons members manage records: services and answers & resources (add, edit, publish, hide, trash, Public or AI-only), CSV upload with a dry-run preview, the Flood Clips submission inbox, removal requests, people (admins), and activity. Everyone signs in with their own account; the database's access rules decide what each person can do. The page uses only the publishable key in `site/config.json`.
+`site/editor/` (served at `/editor/`; the old `/workspace` address redirects there) is where DataSponge members manage records:
+
+- **Services** and **answers & resources**: add, edit, publish, draft, hide, trash and restore; choose **Public** (Local Help and the AI) or **AI-only**.
+- **Upload CSV**: download a template or the current data, edit in Excel or Google Sheets, upload, check the preview, import (all-or-nothing).
+- **Clip inbox** and **removal requests** for Flood Clips.
+- **People** (admins): add colleagues by email and set their role (contributor saves drafts, editor publishes, admin manages people).
+- **Activity**: who changed what.
+
+Everyone signs in with their own account; the database's access rules decide what each person can do. The page uses only the publishable key in `site/config.json`.
 
 Deploy the site with `npx vercel --prod` from `site/`.

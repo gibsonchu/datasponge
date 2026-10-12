@@ -5,3 +5,5 @@
 #filter-panel summary{display:none;cursor:pointer;font-size:14px;font-weight:600;padding:0 0 16px}.filter-fields{display:block}@media(max-width:700px){aside{display:block}#filter-panel summary{display:list-item}.filter-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.intro{padding:25px 0 22px}.intro h1{font-size:32px}.intro .eyebrow{margin-bottom:13px}.notice button{display:block}}
 
 .hidden{display:none!important}.access-form{max-width:460px;margin-top:28px}.access-form label{display:block;font-weight:600}.access-form input{display:block;width:100%;padding:13px;margin:9px 0 16px;border:1px solid #9eb1be;background:white}.access-form button{border:0;font:inherit;cursor:pointer}.access-form button:disabled{opacity:.5}
+
+nav a.edit-link{color:var(--ink);background:var(--mint);padding:8px 14px;border-radius:999px;font-weight:600;text-decoration:none}nav a.edit-link:hover{background:#d6faef}
