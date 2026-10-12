@@ -36,109 +36,102 @@
   "level": "borough"
  },
  {
-  "id": "manhattan/battery-park-city",
-  "label": "Battery Park City",
-  "name": "Battery Park City, Manhattan",
+  "id": "bronx/castle-hill",
+  "label": "Castle Hill",
+  "name": "Castle Hill, Bronx",
   "level": "neighborhood",
-  "borough": "Manhattan"
+  "borough": "Bronx"
  },
  {
-  "id": "manhattan/chelsea",
-  "label": "Chelsea",
-  "name": "Chelsea, Manhattan",
+  "id": "bronx/city-island",
+  "label": "City Island",
+  "name": "City Island, Bronx",
   "level": "neighborhood",
-  "borough": "Manhattan"
+  "borough": "Bronx"
  },
  {
-  "id": "manhattan/chinatown",
-  "label": "Chinatown",
-  "name": "Chinatown, Manhattan",
+  "id": "bronx/clason-point",
+  "label": "Clason Point",
+  "name": "Clason Point, Bronx",
   "level": "neighborhood",
-  "borough": "Manhattan"
+  "borough": "Bronx"
  },
  {
-  "id": "manhattan/east-harlem",
-  "label": "East Harlem",
-  "name": "East Harlem, Manhattan",
+  "id": "bronx/co-op-city",
+  "label": "Co-op City",
+  "name": "Co-op City, Bronx",
   "level": "neighborhood",
-  "borough": "Manhattan"
+  "borough": "Bronx"
  },
  {
-  "id": "manhattan/east-village",
-  "label": "East Village",
-  "name": "East Village, Manhattan",
+  "id": "bronx/fordham",
+  "label": "Fordham",
+  "name": "Fordham, Bronx",
   "level": "neighborhood",
-  "borough": "Manhattan"
+  "borough": "Bronx"
  },
  {
-  "id": "manhattan/financial-district",
-  "label": "Financial District",
-  "name": "Financial District, Manhattan",
+  "id": "bronx/hunts-point",
+  "label": "Hunts Point",
+  "name": "Hunts Point, Bronx",
   "level": "neighborhood",
-  "borough": "Manhattan"
+  "borough": "Bronx"
  },
  {
-  "id": "manhattan/harlem",
-  "label": "Harlem",
-  "name": "Harlem, Manhattan",
+  "id": "bronx/kingsbridge",
+  "label": "Kingsbridge",
+  "name": "Kingsbridge, Bronx",
   "level": "neighborhood",
-  "borough": "Manhattan"
+  "borough": "Bronx"
  },
  {
-  "id": "manhattan/inwood",
-  "label": "Inwood",
-  "name": "Inwood, Manhattan",
+  "id": "bronx/melrose",
+  "label": "Melrose",
+  "name": "Melrose, Bronx",
   "level": "neighborhood",
-  "borough": "Manhattan"
+  "borough": "Bronx"
  },
  {
-  "id": "manhattan/lower-east-side",
-  "label": "Lower East Side",
-  "name": "Lower East Side, Manhattan",
+  "id": "bronx/mott-haven",
+  "label": "Mott Haven",
+  "name": "Mott Haven, Bronx",
   "level": "neighborhood",
-  "borough": "Manhattan"
+  "borough": "Bronx"
  },
  {
-  "id": "manhattan/midtown",
-  "label": "Midtown",
-  "name": "Midtown, Manhattan",
+  "id": "bronx/pelham-bay",
+  "label": "Pelham Bay",
+  "name": "Pelham Bay, Bronx",
   "level": "neighborhood",
-  "borough": "Manhattan"
+  "borough": "Bronx"
  },
  {
-  "id": "manhattan/tribeca",
-  "label": "Tribeca",
-  "name": "Tribeca, Manhattan",
+  "id": "bronx/port-morris",
+  "label": "Port Morris",
+  "name": "Port Morris, Bronx",
   "level": "neighborhood",
-  "borough": "Manhattan"
+  "borough": "Bronx"
  },
  {
-  "id": "manhattan/two-bridges",
-  "label": "Two Bridges",
-  "name": "Two Bridges, Manhattan",
+  "id": "bronx/riverdale",
+  "label": "Riverdale",
+  "name": "Riverdale, Bronx",
   "level": "neighborhood",
-  "borough": "Manhattan"
+  "borough": "Bronx"
  },
  {
-  "id": "manhattan/upper-east-side",
-  "label": "Upper East Side",
-  "name": "Upper East Side, Manhattan",
+  "id": "bronx/soundview",
+  "label": "Soundview",
+  "name": "Soundview, Bronx",
   "level": "neighborhood",
-  "borough": "Manhattan"
+  "borough": "Bronx"
  },
  {
-  "id": "manhattan/upper-west-side",
-  "label": "Upper West Side",
-  "name": "Upper West Side, Manhattan",
+  "id": "bronx/throgs-neck",
+  "label": "Throgs Neck",
+  "name": "Throgs Neck, Bronx",
   "level": "neighborhood",
-  "borough": "Manhattan"
- },
- {
-  "id": "manhattan/washington-heights",
-  "label": "Washington Heights",
-  "name": "Washington Heights, Manhattan",
-  "level": "neighborhood",
-  "borough": "Manhattan"
+  "borough": "Bronx"
  },
  {
   "id": "brooklyn/bath-beach",
@@ -158,6 +151,13 @@
   "id": "brooklyn/bensonhurst",
   "label": "Bensonhurst",
   "name": "Bensonhurst, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/boerum-hill",
+  "label": "Boerum Hill",
+  "name": "Boerum Hill, Brooklyn",
   "level": "neighborhood",
   "borough": "Brooklyn"
  },
@@ -190,6 +190,13 @@
   "borough": "Brooklyn"
  },
  {
+  "id": "brooklyn/cobble-hill",
+  "label": "Cobble Hill",
+  "name": "Cobble Hill, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
   "id": "brooklyn/coney-island",
   "label": "Coney Island",
   "name": "Coney Island, Brooklyn",
@@ -214,6 +221,13 @@
   "id": "brooklyn/east-new-york",
   "label": "East New York",
   "name": "East New York, Brooklyn",
+  "level": "neighborhood",
+  "borough": "Brooklyn"
+ },
+ {
+  "id": "brooklyn/east-williamsburg",
+  "label": "East Williamsburg",
+  "name": "East Williamsburg, Brooklyn",
   "level": "neighborhood",
   "borough": "Brooklyn"
  },
@@ -330,6 +344,118 @@
   "borough": "Brooklyn"
  },
  {
+  "id": "manhattan/battery-park-city",
+  "label": "Battery Park City",
+  "name": "Battery Park City, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/chelsea",
+  "label": "Chelsea",
+  "name": "Chelsea, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/chinatown",
+  "label": "Chinatown",
+  "name": "Chinatown, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/east-harlem",
+  "label": "East Harlem",
+  "name": "East Harlem, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/east-village",
+  "label": "East Village",
+  "name": "East Village, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/financial-district",
+  "label": "Financial District",
+  "name": "Financial District, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/hamilton-heights",
+  "label": "Hamilton Heights",
+  "name": "Hamilton Heights, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/harlem",
+  "label": "Harlem",
+  "name": "Harlem, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/inwood",
+  "label": "Inwood",
+  "name": "Inwood, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/lower-east-side",
+  "label": "Lower East Side",
+  "name": "Lower East Side, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/midtown",
+  "label": "Midtown",
+  "name": "Midtown, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/tribeca",
+  "label": "Tribeca",
+  "name": "Tribeca, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/two-bridges",
+  "label": "Two Bridges",
+  "name": "Two Bridges, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/upper-east-side",
+  "label": "Upper East Side",
+  "name": "Upper East Side, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/upper-west-side",
+  "label": "Upper West Side",
+  "name": "Upper West Side, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
+  "id": "manhattan/washington-heights",
+  "label": "Washington Heights",
+  "name": "Washington Heights, Manhattan",
+  "level": "neighborhood",
+  "borough": "Manhattan"
+ },
+ {
   "id": "queens/arverne",
   "label": "Arverne",
   "name": "Arverne, Queens",
@@ -368,6 +494,13 @@
   "id": "queens/corona",
   "label": "Corona",
   "name": "Corona, Queens",
+  "level": "neighborhood",
+  "borough": "Queens"
+ },
+ {
+  "id": "queens/east-elmhurst",
+  "label": "East Elmhurst",
+  "name": "East Elmhurst, Queens",
   "level": "neighborhood",
   "borough": "Queens"
  },
@@ -468,104 +601,6 @@
   "name": "Woodside, Queens",
   "level": "neighborhood",
   "borough": "Queens"
- },
- {
-  "id": "bronx/castle-hill",
-  "label": "Castle Hill",
-  "name": "Castle Hill, Bronx",
-  "level": "neighborhood",
-  "borough": "Bronx"
- },
- {
-  "id": "bronx/city-island",
-  "label": "City Island",
-  "name": "City Island, Bronx",
-  "level": "neighborhood",
-  "borough": "Bronx"
- },
- {
-  "id": "bronx/clason-point",
-  "label": "Clason Point",
-  "name": "Clason Point, Bronx",
-  "level": "neighborhood",
-  "borough": "Bronx"
- },
- {
-  "id": "bronx/co-op-city",
-  "label": "Co-op City",
-  "name": "Co-op City, Bronx",
-  "level": "neighborhood",
-  "borough": "Bronx"
- },
- {
-  "id": "bronx/fordham",
-  "label": "Fordham",
-  "name": "Fordham, Bronx",
-  "level": "neighborhood",
-  "borough": "Bronx"
- },
- {
-  "id": "bronx/hunts-point",
-  "label": "Hunts Point",
-  "name": "Hunts Point, Bronx",
-  "level": "neighborhood",
-  "borough": "Bronx"
- },
- {
-  "id": "bronx/kingsbridge",
-  "label": "Kingsbridge",
-  "name": "Kingsbridge, Bronx",
-  "level": "neighborhood",
-  "borough": "Bronx"
- },
- {
-  "id": "bronx/melrose",
-  "label": "Melrose",
-  "name": "Melrose, Bronx",
-  "level": "neighborhood",
-  "borough": "Bronx"
- },
- {
-  "id": "bronx/mott-haven",
-  "label": "Mott Haven",
-  "name": "Mott Haven, Bronx",
-  "level": "neighborhood",
-  "borough": "Bronx"
- },
- {
-  "id": "bronx/pelham-bay",
-  "label": "Pelham Bay",
-  "name": "Pelham Bay, Bronx",
-  "level": "neighborhood",
-  "borough": "Bronx"
- },
- {
-  "id": "bronx/port-morris",
-  "label": "Port Morris",
-  "name": "Port Morris, Bronx",
-  "level": "neighborhood",
-  "borough": "Bronx"
- },
- {
-  "id": "bronx/riverdale",
-  "label": "Riverdale",
-  "name": "Riverdale, Bronx",
-  "level": "neighborhood",
-  "borough": "Bronx"
- },
- {
-  "id": "bronx/soundview",
-  "label": "Soundview",
-  "name": "Soundview, Bronx",
-  "level": "neighborhood",
-  "borough": "Bronx"
- },
- {
-  "id": "bronx/throgs-neck",
-  "label": "Throgs Neck",
-  "name": "Throgs Neck, Bronx",
-  "level": "neighborhood",
-  "borough": "Bronx"
  },
  {
   "id": "staten-island/elm-park",
