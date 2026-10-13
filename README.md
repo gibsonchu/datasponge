@@ -10,9 +10,9 @@ DataSponge soaks up flood information from many sources (organizations, city pro
 | [Flood Clips](https://flood-clips.vercel.app) | Resident flood footage on a map |
 | Flood Chat | The AI assistant, which can also use AI-only records |
 
-**[DataSponge Editor](https://datasponge.vercel.app/editor/)** is where people update that data without touching code: add or edit a listing, publish or hide it, choose Public or AI-only, upload a spreadsheet, and review clips. A change published there appears on Local Help the next time someone loads the page.
+**[DataSponge Editor](https://datasponge.floodline.nyc/editor/)** is where people update that data without touching code: add or edit a listing, publish or hide it, choose Public or AI-only, upload a spreadsheet, and review clips. A change published there appears on Local Help the next time someone loads the page.
 
-The [DataSponge site](https://datasponge.vercel.app) explains the project and links to the editor. Developers can read the published catalog directly (see `site/config.json` for the endpoint and publishable key). DataSponge defines practical ways to organize, publish, and exchange flood information, and governments, researchers, community groups, and developers can implement the specifications independently.
+The [DataSponge site](https://datasponge.floodline.nyc) explains the project and links to the editor. Developers can read the published catalog directly (see `site/config.json` for the endpoint and publishable key). DataSponge defines practical ways to organize, publish, and exchange flood information, and governments, researchers, community groups, and developers can implement the specifications independently.
 
 ## Three draft standards
 
