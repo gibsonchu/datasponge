@@ -2,6 +2,28 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "redirects": [
     {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "datasponge.vercel.app"
+        }
+      ],
+      "destination": "https://datasponge.floodline.nyc/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "flood-commons.vercel.app"
+        }
+      ],
+      "destination": "https://datasponge.floodline.nyc/:path*",
+      "permanent": true
+    },
+    {
       "source": "/workspace",
       "destination": "/editor/",
       "permanent": true
