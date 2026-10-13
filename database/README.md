@@ -65,7 +65,7 @@ Neighborhood stories (an image plus a short text, tagged with place, when, who i
 
 Choices and the sheet's columns are defined once in `site/editor/stories-model.js`, used by both the Editor's CSV upload and the one-time sheet import.
 
-## 014: Fix paths (replaced by 015)
+## 014: Fix paths (replaced by 015, removed in 016)
 
 - `fc_private.fix_paths`: problem → fix → programs. Each row has the problem in residents' words, search keywords, audiences (`renter`, `homeowner`, `business_owner`), the fix, details, and `service_ids` pointing at FSS service records.
 - Editor: `fc_fix_paths`, `fc_save_fix_paths(items)`, `fc_set_fix_path_status(path, target)`. Contributors save drafts; editors publish. Publishing (or saving with `reviewed: true`) records `reviewed_by` / `reviewed_at`.
@@ -78,3 +78,7 @@ Choices and the sheet's columns are defined once in `site/editor/stories-model.j
 - `envelope()` now passes a document's `relationships` to `propose()`, so they land in `fc_private.relationships` and, once published, `public.fc_relationships`. `fc_records` already adds them to each document. A link disappears when its service is unpublished; Flood Chat also drops links to closed or past-deadline services.
 - A Q/A doesn't need an outside source. Answers the team writes cite `https://bluedots.nyc` (organization "Blue Dots", evidence `unknown`); the Editor fills that in when Source Link is left blank, and Flood Chat doesn't show it as a link.
 - This replaces 014's separate Fixes list. The nine fixes were moved into Q/A (published, `unreviewed`), and the `fix_paths` rows were hidden, not deleted (data move kept outside this repo). The Editor's Fixes tab and Flood Chat's `get_fix_paths` tool are gone; dropping the 014 table and functions is left for later.
+
+## 016: Fixes removed
+
+- Drops `fc_private.fix_paths` and the 014 functions. The fixes live on as Q/A records (015).
