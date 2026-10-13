@@ -1,6 +1,6 @@
 # Supabase reference implementation
 
-This is a pilot editorial catalog, not a canonical-document ingestion API yet. Apply `001` through `010` in order to a **new Supabase project** using migrations. Do not run the baseline on an existing DataSponge installation. Supabase Auth and the `pg_jsonschema` extension are required. The SQL installs its bundled draft schemas; the JSON files in `standards/` describe interchange documents.
+This is a pilot editorial catalog, not a canonical-document ingestion API yet. Apply `001` through `012` in order to a **new Supabase project** using migrations. Do not run the baseline on an existing DataSponge installation. Supabase Auth and the `pg_jsonschema` extension are required. The SQL installs its bundled draft schemas; the JSON files in `standards/` describe interchange documents.
 
 Keep `fc_private` out of the Data API's exposed schemas. Only `public` is exposed. Public reads use `fc_records` and return reviewed standard documents. `fc_current_catalog` also excludes closed, historical, temporarily unavailable, and expired help listings. Raw catalog writes are denied. Drafts are scoped to authenticated members, and publication requires an editor or administrator.
 
@@ -40,3 +40,15 @@ Hosted media and coordinate publication are disabled in this pilot. Public relat
 ## 010: availability note
 
 FSS 0.1 gains an optional `service.availability_note`, a short plain-language detail about whether a service is taking people ("Waitlist until March"). Optional, so existing records stay valid.
+
+## 011–012: Sources and Q/A
+
+Answers (FRS `faq_answer` records, shown as **Q/A** in the Editor) now come from **Sources**: websites, PDFs, Word files, and images that members add.
+
+- `fc_sources()`, `fc_add_sources(items)`: list and add sources (members). Files go in the public `sources` storage bucket; only members can upload.
+- `fc_start_reading`, `fc_save_reading(source, title, publisher, summary, chunks, problem)`: editors save what `site/api/source-read.js` read, as searchable passages (`fc_private.source_chunks`, English full-text index).
+- `fc_set_source_status(source, target)`: `waiting` (read again), `hidden` (kept, not searchable), `trashed`, `restore`.
+- `fc_link_answer(record, source, quote)`: which sources back which Q/A, with the supporting quote.
+- `fc_questions()`, `fc_add_questions(questions)`, `fc_set_question(...)`: questions waiting for an answer. `site/api/answer.js` answers them from Sources only.
+- `fc_search_sources(q, max_results)`: public passage search over sources that have been read (all words first, then any). Flood Chat calls it when Q/A isn't specific enough. 012 makes it callable with the publishable key.
+- 011 seeds Sources from the links the existing Q/A cite (except bluedots.nyc) and links them.

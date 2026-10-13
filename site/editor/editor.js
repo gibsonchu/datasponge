@@ -25,7 +25,7 @@ const titleCase = (t) => t.replace(/\b\w+/g, (w, i) => (i > 0 && SMALL_WORDS.has
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const NAMES = {
   FSS: { one: "service", many: "Services", add: "Add a Service" },
-  FRS: { one: "answer or resource", many: "Answers & Resources", add: "Add an Answer or Resource" },
+  FRS: { one: "Q/A", many: "Q/A", add: "Add a Q/A" },
   FMS: { one: "clip", many: "Clips" },
 };
 const GROUPS = { basics: "Basics", contact: "Contact", where: "Service Area", who: "Who It's For & Topics", details: "Details", source: "Source & Review (Internal Only)", visibility: "Visibility" };
@@ -39,9 +39,10 @@ const CLIPS_URL = "https://flood-clips.vercel.app/";
 const cfg = await (await fetch("/config.json", { cache: "no-cache" })).json();
 let session = JSON.parse(sessionStorage.getItem("fc_workspace_session") || "null");
 let me = null;
-let data = { items: [], inbox: [], removals: [] };
+let data = { items: [], inbox: [], removals: [], sources: [], questions: [], qaSources: new Map() };
 let view = "FSS";
 const lists = Object.fromEntries(["FSS", "FRS", "FMS"].map((s) => [s, { q: "", status: "", type: "", audience: "", sort: "new" }]));
+lists.sources = { q: "", status: "" };
 const ui = { importStd: "FSS", importFile: null, importRows: null, importResult: null, ignored: [], showHistory: false };
 const canPublish = () => me && ["editor", "admin"].includes(me.role);
 const isAdmin = () => me?.role === "admin";
@@ -178,11 +179,20 @@ async function rest(path, { method = "GET", body } = {}) {
 const rpc = (fn, args = {}) => rest(`rpc/${fn}`, { method: "POST", body: args });
 
 async function refresh() {
-  const [recs, inbox, removals] = await Promise.all([
+  const [recs, inbox, removals, sources, questions] = await Promise.all([
     rest("fc_workspace_records?select=id,status,audience,latest_revision,has_unpublished_changes,document,updated_at&limit=10000"),
     rest("fc_clip_inbox?select=*&order=created_at.desc&limit=500"),
     rest("fc_removal_inbox?select=*&order=created_at.desc&limit=500"),
+    rpc("fc_sources"),
+    rpc("fc_questions"),
   ]);
+  data.sources = sources;
+  data.questions = questions;
+  data.qaSources = new Map();
+  for (const s of sources) for (const a of s.answers) {
+    if (!data.qaSources.has(a.record_id)) data.qaSources.set(a.record_id, []);
+    data.qaSources.get(a.record_id).push({ source: s, quote: a.quote });
+  }
   data.items = recs
     .filter((r) => r.document?.standard)
     .map((r) => ({
@@ -200,6 +210,8 @@ async function refresh() {
   data.removals = removals;
   const live = (s) => data.items.filter((i) => i.standard === s && i.status !== "excluded").length;
   for (const s of ["FSS", "FRS", "FMS"]) $("#c-" + s).textContent = live(s);
+  $("#c-sources").textContent = data.sources.filter((s) => s.status !== "trashed").length;
+  $("#c-questions").textContent = data.questions.filter((q) => q.status === "open").length || "";
   $("#c-trash").textContent = data.items.filter((i) => i.status === "excluded").length || "";
   $("#c-inbox").textContent = data.inbox.filter((s) => s.status === "pending").length || "";
   $("#c-removals").textContent = data.removals.filter((q) => q.status === "open").length || "";
@@ -255,8 +267,8 @@ function go(v, fromHash = false) {
     if (!SORTS[lists[v].sort]) lists[v].sort = "new";
   }
   saveHash();
-  // Pages opened from a tab (Upload CSV, Add Many, Fill Missing Details) keep that tab highlighted.
-  const tab = { import: ui.importStd, many: "FSS", fill: "FSS" }[v] ?? v;
+  // Pages opened from a tab (Upload CSV, Add Many, Fill Missing Details, Ask Questions) keep that tab highlighted.
+  const tab = { import: ui.importStd, many: "FSS", fill: "FSS", questions: "FRS" }[v] ?? v;
   for (const b of document.querySelectorAll("[data-view]")) b.dataset.view === tab ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current");
   render();
 }
@@ -266,7 +278,7 @@ $(".tabs").onclick = (e) => {
 };
 function render() {
   const el = $("#view");
-  const views = { many: manyView, fill: fillView, FSS: () => listView("FSS"), FRS: () => listView("FRS"), FMS: clipsView, inbox: inboxView, removals: removalsView, import: importView, trash: trashView, people: () => '<p class="sub">Loading…</p>', log: () => '<p class="sub">Loading…</p>' };
+  const views = { many: manyView, fill: fillView, sources: sourcesView, questions: questionsView, FSS: () => listView("FSS"), FRS: () => listView("FRS"), FMS: clipsView, inbox: inboxView, removals: removalsView, import: importView, trash: trashView, people: () => '<p class="sub">Loading…</p>', log: () => '<p class="sub">Loading…</p>' };
   el.innerHTML = (views[view] || views.FSS)();
   if (view === "import") wireImport();
   if (view === "people") peopleView();
@@ -328,7 +340,8 @@ function listView(std) {
     .map((i) => {
       const r = i.row;
       const note = publicNote(i);
-      const sub = std === "FSS" ? [r.service_area, r.phone].filter(Boolean).join(" · ") : [r.resource_type === "faq_answer" ? "Quick answer" : r.resource_type.replaceAll("_", " "), r.audiences.replaceAll(" | ", ", ")].filter(Boolean).join(" · ");
+      const nSrc = data.qaSources.get(i.id)?.length ?? 0;
+      const sub = std === "FSS" ? [r.service_area, r.phone].filter(Boolean).join(" · ") : [nSrc ? `${nSrc} source${nSrc === 1 ? "" : "s"}` : "No source linked", r.audiences.replaceAll(" | ", ", ")].filter(Boolean).join(" · ");
       const types = typesOf(i).map((t) => typeLabel(std, t)).join(", ");
       return `<tr>
         <td class="clip-cell" title="${esc([r.title, sub, note].filter(Boolean).join(" · "))}"><span class="name">${esc(r.title)}</span>${sub ? ` <span class="sub">· ${esc(sub)}</span>` : ""}${note ? ` <span class="pill warn">${esc(note)}</span>` : ""}</td>
@@ -344,10 +357,11 @@ function listView(std) {
   const typeOptions = Object.keys(counts.type).sort((a, b) => typeLabel(std, a).localeCompare(typeLabel(std, b)));
   const opt = (map, k, label) => `<option value="${k}" ${l[map] === k ? "selected" : ""}>${label} (${counts[map][k] ?? 0})</option>`;
   return `<div class="bar">
-      <input type="search" id="list-q" placeholder="Search ${NAMES[std].many.toLowerCase()}…" value="${esc(l.q)}" aria-label="Search">
+      <input type="search" id="list-q" placeholder="Search ${NAMES[std].many}…" value="${esc(l.q)}" aria-label="Search">
       <span class="spacer"></span>
       ${std === "FSS" && isAdmin() ? `<button class="btn lookup" data-go="fill">✨ Fill Missing Details</button>` : ""}
       <button class="btn" data-go="import">Upload CSV</button>
+      ${std === "FRS" ? `<button class="btn lookup" data-go="questions">✨ Ask Questions${data.questions.some((q) => q.status === "open") ? ` (${data.questions.filter((q) => q.status === "open").length} waiting)` : ""}</button>` : ""}
       ${std === "FSS" && canPublish() ? `<button class="btn" data-go="many">+ Add Many</button>` : ""}
       <button class="btn primary" data-new="${std}">+ ${NAMES[std].add}</button>
     </div>
@@ -498,6 +512,28 @@ $("#view").addEventListener("click", async (e) => {
   if (!t) return;
   if (t.dataset.go === "import" && (view === "FSS" || view === "FRS")) { ui.importStd = view; ui.importResult = null; ui.importFile = null; ui.ignored = []; }
   if (t.dataset.go) return go(t.dataset.go);
+  if (t.dataset.sourceOpen) return sourceDialog(t.dataset.sourceOpen);
+  if (t.dataset.sourceRead) return runReading([t.dataset.sourceRead]);
+  if ("sourcesRun" in t.dataset) return runReading();
+  if ("sourcesStop" in t.dataset) { srcRun.stop = true; t.disabled = true; return; }
+  if (t.dataset.sourceStatus) {
+    const s = sourceById(t.dataset.sourceStatus);
+    if (t.dataset.to === "trashed" && !confirm(`Move “${sourceName(s)}” to the trash? Its text stops being searchable. Q/A from it are kept.`)) return;
+    return act(() => rpc("fc_set_source_status", { source: s.id, target: t.dataset.to }), { hidden: "Hidden: kept, but not used for answers.", trashed: "Moved to trash.", restore: "Unhidden." }[t.dataset.to]);
+  }
+  if (t.dataset.qaOpen) return openEditor("FRS", data.items.find((i) => i.id === t.dataset.qaOpen));
+  if (t.dataset.qAnswer) return runQuestions([data.questions.find((q) => q.id === t.dataset.qAnswer)]);
+  if ("qRun" in t.dataset) return runQuestions(data.questions.filter((q) => q.status === "open"));
+  if ("qStop" in t.dataset) { qRun.stop = true; t.disabled = true; return; }
+  if (t.dataset.qDismiss) return act(() => rpc("fc_set_question", { question: t.dataset.qDismiss, target: "dismissed" }), "Dismissed.");
+  if (t.dataset.qReopen) return act(() => rpc("fc_set_question", { question: t.dataset.qReopen, target: "open" }), "Reopened.");
+  if (t.dataset.qWrite) {
+    const q = data.questions.find((x) => x.id === t.dataset.qWrite);
+    openEditor("FRS");
+    editing.questionId = q.id;
+    $("#editor-form").elements.title.value = q.question;
+    return $("#editor-form").elements.summary?.focus();
+  }
   if ("fillStart" in t.dataset) return runFill();
   if ("fillStop" in t.dataset) { fillRun.stop = true; t.disabled = true; return; }
   if ("fillReport" in t.dataset) return fillReport();
@@ -525,8 +561,37 @@ $("#view").addEventListener("click", async (e) => {
     return act(() => rpc("fc_resolve_removal", { request: t.dataset.removal, action: remove ? "remove" : "dismiss", note: note || (remove ? "Removal requested" : "Kept after review") }), remove ? "Taken down." : "Kept. The request is closed.");
   }
 });
+// Source files: drop onto the box, or choose them.
+const showPicked = () => {
+  const files = [...($("#source-files")?.files ?? [])];
+  if ($("#source-picked")) $("#source-picked").textContent = files.length ? files.map((f) => f.name).join(", ") : "Up to 25 MB each.";
+};
+$("#view").addEventListener("dragover", (e) => {
+  const z = e.target.closest("#source-drop");
+  if (!z) return;
+  e.preventDefault();
+  z.classList.add("over");
+});
+$("#view").addEventListener("dragleave", (e) => e.target.closest("#source-drop")?.classList.remove("over"));
+$("#view").addEventListener("drop", (e) => {
+  const z = e.target.closest("#source-drop");
+  if (!z) return;
+  e.preventDefault();
+  z.classList.remove("over");
+  $("#source-files").files = e.dataTransfer.files;
+  showPicked();
+});
+$("#view").addEventListener("change", (e) => { if (e.target.id === "source-files") showPicked(); });
 $("#view").addEventListener("toggle", (e) => { if (e.target.id === "inbox-history") ui.showHistory = e.target.open; }, true);
 $("#view").addEventListener("submit", (e) => {
+  if (e.target.id === "sources-form") {
+    e.preventDefault();
+    return addSources(e.target);
+  }
+  if (e.target.id === "questions-form") {
+    e.preventDefault();
+    return addQuestions(e.target);
+  }
   if (e.target.id === "many-form") {
     e.preventDefault();
     addNames(e.target.names.value);
@@ -839,6 +904,387 @@ function openManyRow(i) {
   if (r.lookup) fillFromLookup(r.lookup);
 }
 
+// ---------- sources ----------
+// Websites, PDFs, and files that answers come from. Reading one (an AI call,
+// editors only) saves its text as searchable passages and drafts the
+// questions it answers as Q/A for a person to review. Everything runs under
+// the signed-in person's own session.
+const SRC_STATE = {
+  waiting: ["unchanged", "Waiting to be read"], reading: ["info", "Reading…"], read: ["add", "Read"],
+  failed: ["error", "Couldn't read"], hidden: ["unchanged", "Hidden"], trashed: ["unchanged", "Trashed"],
+};
+const SRC_ACCEPT = ".pdf,.docx,.txt,.md,.csv,.html,.png,.jpg,.jpeg,.webp,.gif";
+const srcRun = { running: false, stop: false, notes: new Map(), newlyRead: new Set() };
+const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return u; } };
+const qaItems = () => data.items.filter((i) => i.standard === "FRS" && i.status !== "excluded");
+const sourceById = (id) => data.sources.find((s) => s.id === id);
+// Before a source is read it has no title; use the last part of its link ("Homeowners and Renters Guide").
+const pathName = (u) => {
+  try {
+    const last = decodeURIComponent(new URL(u).pathname.split("/").filter(Boolean).pop() ?? "").replace(/\.(page|html?|php|aspx?|pdf)$/i, "").replace(/[-_+]+/g, " ").trim();
+    return last.length > 3 && !/^(index|home|about|edit|view)$/i.test(last) ? titleCase(last) : "";
+  } catch { return ""; }
+};
+const sourceName = (s) => s.title || s.file_name || pathName(s.url) || hostOf(s.url);
+
+function sourcesView() {
+  const l = lists.sources;
+  const q = l.q.toLowerCase();
+  const all = data.sources.filter((s) => s.status !== "trashed");
+  const items = all.filter((s) => (!l.status || s.status === l.status) && (!q || [s.title, s.publisher, s.url, s.file_name, s.summary].join(" ").toLowerCase().includes(q)));
+  const waiting = all.filter((s) => ["waiting", "failed"].includes(s.status)).length;
+  const counts = {};
+  for (const s of all) counts[s.status] = (counts[s.status] ?? 0) + 1;
+  const rows = items
+    .map((s) => {
+      const [cls, label] = SRC_STATE[s.status];
+      const note = srcRun.notes.get(s.id) || s.problem || "";
+      const sub = [s.publisher, s.kind === "file" ? s.file_name || "File" : hostOf(s.url)].filter(Boolean).join(" · ");
+      const n = s.answers.length;
+      return `<tr>
+        <td class="clip-cell" title="${esc([sourceName(s), sub, s.summary].filter(Boolean).join(" · "))}"><button class="link-btn name" data-source-open="${s.id}">${esc(sourceName(s))}</button>${sub ? ` <span class="sub">· ${esc(sub)}</span>` : ""}</td>
+        <td><span class="pill ${cls}">${label}</span>${note ? `<div class="sub clip-cell" title="${esc(note)}">${esc(note)}</div>` : ""}</td>
+        <td>${n ? `<button class="link-btn" data-source-open="${s.id}">${n} Q/A</button>` : `<span class="sub">—</span>`}</td>
+        <td class="sub nowrap">${esc(fmtDate(s.read_at || s.created_at))}</td>
+        <td><div class="row-actions">
+          <a class="icon-action" href="${esc(s.url)}" target="_blank" rel="noreferrer" aria-label="Open ${esc(sourceName(s))}" title="Open">↗</a>
+          ${canPublish() && !["reading"].includes(s.status) ? `<button class="btn" data-source-read="${s.id}">${s.status === "read" ? "Read Again" : "Read"}</button>` : ""}
+          ${canPublish() ? (s.status === "hidden" ? `<button class="btn" data-source-status="${s.id}" data-to="restore">Unhide</button>` : `<button class="btn" data-source-status="${s.id}" data-to="hidden" title="Keep it, but don't use it for answers">Hide</button>`) : ""}
+          ${canPublish() ? iconBtn("trash", `Move ${sourceName(s)} to trash`, `data-source-status="${s.id}" data-to="trashed"`, "danger") : ""}
+        </div></td></tr>`;
+    })
+    .join("");
+  return `<section class="panel">
+      <h2>Add Sources</h2>
+      <p>Paste links to web pages or PDFs (one per line, or a whole list at once), or upload files: PDF, Word, text, or photos of flyers. ${canPublish() ? "Each one is read by AI: its text becomes searchable for Flood Chat, and the questions it answers are added to Q/A as drafts for you to review." : "An editor will have it read."}</p>
+      <form id="sources-form" class="many-paste">
+        <textarea name="links" rows="3" placeholder="https://www.nyc.gov/site/em/ready/flooding.page&#10;https://www.fema.gov/sites/default/files/flood-guide.pdf"></textarea>
+        <label class="dropzone" id="source-drop"><input type="file" id="source-files" multiple accept="${SRC_ACCEPT}"><span>📄 <strong>Choose files</strong> or drop them here</span> <span class="sub" id="source-picked">Up to 25 MB each.</span></label>
+        <div class="bar"><button class="btn primary" type="submit">Add Sources</button><span class="sub">Sources are public references: their text can be quoted by Flood Chat and other tools.</span></div>
+      </form>
+    </section>
+    <div class="bar">
+      <input type="search" id="list-q" placeholder="Search Sources…" value="${esc(l.q)}" aria-label="Search sources">
+      <label class="inline">Status<select id="list-status"><option value="">All</option>${Object.keys(SRC_STATE).filter((k) => k !== "trashed").map((k) => `<option value="${k}" ${l.status === k ? "selected" : ""}>${SRC_STATE[k][1].replace("…", "")} (${counts[k] ?? 0})</option>`).join("")}</select></label>
+      <span class="spacer"></span>
+      ${canPublish() ? (srcRun.running ? `<button class="btn danger" data-sources-stop>Stop After the Current Ones</button>` : `<button class="btn lookup" data-sources-run ${waiting ? "" : "disabled"}>✨ Read Waiting Sources (${waiting})</button>`) : ""}
+    </div>
+    ${canPublish() && waiting && !srcRun.running ? `<p class="sub">Each source takes about 30 seconds to 2 minutes and costs roughly 10–40 cents. About ${Math.max(1, Math.ceil((waiting * 1) / 2))}–${Math.max(1, Math.ceil((waiting * 2) / 2))} minutes for all ${waiting}. Keep this tab open while it runs.</p>` : ""}
+    ${items.length ? `<table class="table compact"><colgroup><col class="c-name"><col class="c-type"><col class="c-qa"><col class="c-date"><col class="c-act-wide"></colgroup><thead><tr><th>Source</th><th>Status</th><th>Q/A</th><th>Read</th><th></th></tr></thead><tbody>${rows}</tbody></table>`
+      : `<div class="empty"><h2>No sources ${all.length ? "match" : "yet"}.</h2><p>${all.length ? "Try clearing the search." : "Add a link or a file above."}</p></div>`}`;
+}
+
+function parseLinks(text) {
+  return [...new Set(text.split(/[\s,;]+|\s[•·]\s/).map((s) => s.replace(/^[-*•·(<\[]+|[)>\].]+$/g, "").trim()).filter(Boolean)
+    .map((s) => (/^https?:\/\//i.test(s) ? s : /^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(s) ? `https://${s}` : null)).filter(Boolean))];
+}
+
+async function uploadSourceFile(file) {
+  if (file.size > 25 * 1024 * 1024) throw new Error(`${file.name} is over 25 MB.`);
+  const path = `${crypto.randomUUID()}/${encodeURIComponent(file.name.replace(/[^\w.\- ]+/g, "-").replace(/\s+/g, "-"))}`;
+  const r = await fetch(`${cfg.url}/storage/v1/object/sources/${path}`, {
+    method: "POST",
+    headers: { apikey: cfg.key, Authorization: `Bearer ${await accessToken()}`, "Content-Type": file.type || "application/octet-stream", "x-upsert": "false" },
+    body: file,
+  });
+  if (!r.ok) throw new Error(`Couldn't upload ${file.name}: ${(await r.json().catch(() => ({}))).message || r.status}`);
+  return { url: `${cfg.url}/storage/v1/object/public/sources/${path}`, kind: "file", file_name: file.name, media_type: file.type || null, title: file.name.replace(/\.\w+$/, "").replace(/[-_]+/g, " ") };
+}
+
+async function addSources(form) {
+  const links = parseLinks(form.links.value);
+  const files = [...$("#source-files").files];
+  if (!links.length && !files.length) return flash("Paste a link or choose a file first.", true);
+  const btn = form.querySelector("[type=submit]");
+  btn.disabled = true;
+  try {
+    const items = links.map((url) => ({ url, kind: /\.pdf($|\?)/i.test(url) ? "file" : "website" }));
+    for (const f of files) {
+      flash(`Uploading ${f.name}…`);
+      items.push(await uploadSourceFile(f));
+    }
+    const added = await rpc("fc_add_sources", { items });
+    await refresh();
+    const fresh = added.filter((a) => !a.existing).map((a) => a.id);
+    render();
+    flash(`Added ${fresh.length} source${fresh.length === 1 ? "" : "s"}${added.length > fresh.length ? ` (${added.length - fresh.length} already there)` : ""}.${canPublish() && fresh.length ? " Reading now…" : ""}`);
+    if (canPublish() && fresh.length) runReading(fresh);
+  } catch (err) {
+    flash(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// A drafted question from a source -> a Q/A form row.
+function qaRow(it, src) {
+  return {
+    status: "draft", audience: "public", title: it.question.trim(), summary: it.answer.trim(), resource_type: "faq_answer",
+    categories: (it.categories || []).join(" | "), audiences: (it.audiences || []).join(" | "), action_stages: (it.action_stages || []).join(" | "),
+    source_url: src.url, document_url: src.url, source_organization: src.publisher || hostOf(src.url), source_checked_at: src.checked_at || today(),
+    evidence_status: "website_documented", verification_status: "source_checked", languages: "en",
+  };
+}
+const sameQuestion = (a, b) => a.toLowerCase().replace(/[^\w ]/g, "").trim() === b.toLowerCase().replace(/[^\w ]/g, "").trim();
+
+// Save a new draft Q/A and link it to its sources. -> record id, or null if it can't be saved.
+async function saveDraftQa(row, links) {
+  const record = fromRow("FRS", row);
+  // AI picks from the taxonomy; drop anything else rather than lose the draft.
+  const known = (dim, xs) => xs.filter((k) => TERMS[dim].some((t) => t.key === k));
+  record.categories = known("topic", record.categories);
+  record.audiences = known("audience", record.audiences);
+  record.action_stages = known("stage", record.action_stages);
+  if (!record.categories.length) record.categories = ["preparedness"];
+  if (Object.keys(validate(record, "draft")).length) return null;
+  const saved = await rpc("fc_save_record", { doc: record, target: "draft", record_audience: "public", expected_revision: null });
+  for (const l of links) await rpc("fc_link_answer", { record: saved.id, source: l.id, quote: l.quote || null });
+  // Visible to the rest of this run (duplicate checks) before the next refresh.
+  data.items.push({ id: saved.id, standard: "FRS", record, status: saved.status, audience: "public", rev: saved.revision, row: toRow(record, { status: saved.status }), updated_at: new Date().toISOString() });
+  return saved.id;
+}
+
+let saveChain = Promise.resolve();
+const withSaveLock = (fn) => (saveChain = saveChain.then(fn, fn));
+
+async function readOne(s) {
+  s.status = "reading";
+  srcRun.notes.delete(s.id);
+  render();
+  try {
+    const r = await fetch("/api/source-read", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ source_id: s.id, url: s.url, existing: qaItems().map((i) => i.record.title) }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || `Reading failed (${r.status}).`);
+    let added = 0, linked = 0, skipped = 0;
+    const src = { url: s.url, publisher: j.publisher, checked_at: j.checked_at };
+    // One source saves at a time, so two sources drafting the same question don't both add it.
+    await withSaveLock(async () => {
+      for (const it of j.items) {
+        const dup = qaItems().find((i) => (it.duplicate_of && i.record.title === it.duplicate_of) || sameQuestion(i.record.title, it.question));
+        if (dup) {
+          await rpc("fc_link_answer", { record: dup.id, source: s.id, quote: it.quote || null });
+          linked++;
+        } else if (await saveDraftQa(qaRow(it, src), [{ id: s.id, quote: it.quote }])) added++;
+        else skipped++;
+      }
+    });
+    Object.assign(s, { status: "read", title: j.title || s.title, publisher: j.publisher || s.publisher });
+    srcRun.notes.set(s.id, j.about_flooding === false ? "Read, but it isn't about flooding, so no Q/A were drafted." : `${added} new Q/A draft${added === 1 ? "" : "s"}${linked ? `; ${linked} existing Q/A now cite it` : ""}${skipped ? `; ${skipped} couldn't be saved` : ""}${j.truncated ? " (long source: Q/A come from the first part; all of it is searchable)" : ""}.`);
+    srcRun.newlyRead.add(s.id);
+  } catch (err) {
+    s.status = "failed";
+    srcRun.notes.set(s.id, err.message);
+  } finally {
+    render();
+  }
+}
+
+async function runReading(ids = null) {
+  if (srcRun.running) return;
+  const queue = data.sources.filter((s) => (ids ? ids.includes(s.id) : ["waiting", "failed"].includes(s.status)) && s.status !== "trashed");
+  if (!queue.length) return;
+  if (!ids && !confirm(`Read ${queue.length} source${queue.length === 1 ? "" : "s"} with AI and draft Q/A from them?`)) return;
+  Object.assign(srcRun, { running: true, stop: false });
+  render();
+  const worker = async () => {
+    while (queue.length && !srcRun.stop) await readOne(queue.shift());
+  };
+  await Promise.all([worker(), worker()]);
+  srcRun.running = false;
+  await refresh().catch(() => {});
+  render();
+  const retried = await retryOpenQuestions();
+  flash(`${srcRun.stop ? "Stopped." : "Done reading."} New Q/A are drafts under Q/A.${retried ? ` Also answered ${retried} waiting question${retried === 1 ? "" : "s"}.` : ""}`);
+}
+
+function sourceDialog(id) {
+  const s = sourceById(id);
+  if (!s) return;
+  const linked = s.answers.map((a) => ({ ...a, item: data.items.find((i) => i.id === a.record_id) })).filter((a) => a.item && a.item.status !== "excluded");
+  const drafts = linked.filter((a) => a.item.status === "draft");
+  $("#source-dialog-body").innerHTML = `
+    <h2>${esc(sourceName(s))}</h2>
+    <p class="sub">${esc([s.publisher, s.kind === "file" ? s.file_name : hostOf(s.url), s.char_count ? `${Math.round(s.char_count / 1000)}k characters` : "", `added by ${s.added_by}`].filter(Boolean).join(" · "))} · <a href="${esc(s.url)}" target="_blank" rel="noreferrer">Open ↗</a></p>
+    ${s.summary ? `<p>${esc(s.summary)}</p>` : ""}
+    ${s.problem ? `<p class="pill error">${esc(s.problem)}</p>` : ""}
+    <div class="bar"><h3 style="margin:0">Q/A From This Source (${linked.length})</h3><span class="spacer"></span>
+      ${canPublish() && drafts.length ? `<button class="btn primary" data-publish-drafts="${s.id}">Publish ${drafts.length} Draft${drafts.length === 1 ? "" : "s"}</button>` : ""}</div>
+    ${linked.length ? `<ul class="qa-list">${linked.map((a) => `<li><div><button class="link-btn name" data-qa-edit="${a.item.id}">${esc(a.item.record.title)}</button> <span class="pill state ${a.item.status}">${STATUS_LABEL[a.item.status]}</span></div>
+      <div class="sub">${esc(a.item.record.summary)}</div>${a.quote ? `<blockquote>“${esc(a.quote)}”</blockquote>` : ""}</li>`).join("")}</ul>` : `<p class="sub">${s.status === "read" ? "No Q/A came from this source." : "Read it to draft Q/A."}</p>`}`;
+  $("#source-dialog").showModal();
+}
+$("#source-dialog").addEventListener("click", async (e) => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  if ("close" in t.dataset) return $("#source-dialog").close();
+  if (t.dataset.qaEdit) {
+    $("#source-dialog").close();
+    return openEditor("FRS", data.items.find((i) => i.id === t.dataset.qaEdit));
+  }
+  if (t.dataset.publishDrafts) {
+    const s = sourceById(t.dataset.publishDrafts);
+    const drafts = s.answers.map((a) => data.items.find((i) => i.id === a.record_id)).filter((i) => i?.status === "draft");
+    if (!confirm(`Publish ${drafts.length} Q/A? They go live for Flood Chat and other tools right away.`)) return;
+    t.disabled = true;
+    let ok = 0;
+    const problems = [];
+    for (const i of drafts) {
+      try {
+        await rpc("fc_set_record_status", { record: i.id, target: "published", reason: "Published from its source" });
+        ok++;
+      } catch (err) {
+        problems.push(`${i.record.title}: ${err.message}`);
+      }
+    }
+    await refresh();
+    render();
+    sourceDialog(s.id);
+    flash(`Published ${ok}.${problems.length ? ` ${problems.length} couldn't be: ${problems.join("; ")}` : ""}`, problems.length > 0);
+  }
+});
+
+// ---------- questions ----------
+// Questions people ask. Each is answered by AI from Sources only and saved as
+// a draft Q/A; ones the Sources can't answer wait and are tried again when
+// new sources are read.
+const Q_STATE = { open: ["warn", "Waiting for a source"], answering: ["info", "Answering…"], answered: ["add", "Answered"], dismissed: ["unchanged", "Dismissed"] };
+const qRun = { running: false, stop: false, busy: new Set() };
+
+function questionsView() {
+  const qs = data.questions;
+  const open = qs.filter((q) => q.status === "open");
+  const order = { open: 0, answered: 1, dismissed: 2 };
+  const rows = [...qs].sort((a, b) => order[a.status] - order[b.status] || b.created_at.localeCompare(a.created_at))
+    .map((q) => {
+      const [cls, label] = Q_STATE[qRun.busy.has(q.id) ? "answering" : q.status];
+      const rec = q.record_id && data.items.find((i) => i.id === q.record_id);
+      return `<tr><td class="name">${esc(q.question)}</td><td><span class="pill ${cls}">${label}</span>${rec ? ` <span class="pill state ${rec.status}">${STATUS_LABEL[rec.status] ?? ""}</span>` : ""}</td>
+        <td class="sub">${esc(q.note || "")}</td>
+        <td><div class="row-actions">${rec ? `<button class="btn" data-qa-open="${rec.id}">Open</button>` : ""}
+          ${q.status === "open" && !qRun.busy.has(q.id) ? `${canPublish() ? `<button class="btn" data-q-answer="${q.id}">Try Again</button>` : ""}<button class="btn" data-q-write="${q.id}">Write Answer</button><button class="btn danger" data-q-dismiss="${q.id}" aria-label="Dismiss">×</button>` : ""}
+          ${q.status === "dismissed" ? `<button class="btn" data-q-reopen="${q.id}">Reopen</button>` : ""}</div></td></tr>`;
+    })
+    .join("");
+  return `<section class="panel">
+      <h2>✨ Ask Questions</h2>
+      <p>Paste questions people ask, one per line. ${canPublish() ? "AI answers each one <strong>using only your Sources</strong> and saves it as a draft Q/A, with the quote and source it came from. Questions the Sources can't answer wait here, and are tried again automatically when new sources are read." : "An editor will have them answered from Sources."}</p>
+      <form id="questions-form" class="many-paste">
+        <textarea name="questions" rows="4" placeholder="Does renters insurance cover flood damage?&#10;Who do I call if my basement floods?"></textarea>
+        <div class="bar"><button class="btn primary" type="submit">${canPublish() ? "Add &amp; Answer" : "Add Questions"}</button><span class="spacer"></span>
+        ${canPublish() && open.length ? (qRun.running ? `<button class="btn danger" type="button" data-q-stop>Stop</button>` : `<button class="btn" type="button" data-q-run>Try All Waiting Again (${open.length})</button>`) : ""}
+        <button class="btn" type="button" data-go="FRS">Back to Q/A</button></div>
+      </form>
+      ${canPublish() ? `<p class="sub">Each answer takes 15–60 seconds and costs roughly 5–20 cents.</p>` : ""}
+    </section>
+    ${qs.length ? `<table class="table"><thead><tr><th>Question</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : ""}`;
+}
+
+// -> true if answered.
+async function answerOne(q) {
+  const dup = qaItems().find((i) => sameQuestion(i.record.title, q.question));
+  if (dup) {
+    await rpc("fc_set_question", { question: q.id, target: "answered", note: "Already in Q/A.", record: dup.id, tried: false });
+    Object.assign(q, { status: "answered", record_id: dup.id, note: "Already in Q/A." });
+    return true;
+  }
+  qRun.busy.add(q.id);
+  render();
+  try {
+    const r = await fetch("/api/answer", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ question: q.question }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || `Answering failed (${r.status}).`);
+    if (!j.answerable) {
+      const note = `Sources don't cover this yet.${j.fields?.missing ? ` Would need: ${j.fields.missing}` : ""}`;
+      await rpc("fc_set_question", { question: q.id, target: "open", note, tried: true });
+      Object.assign(q, { status: "open", note });
+      return false;
+    }
+    const f = j.fields;
+    const first = sourceById(j.sources[0].id) ?? j.sources[0];
+    const id = await withSaveLock(async () => {
+      const twin = qaItems().find((i) => sameQuestion(i.record.title, f.question || q.question));
+      return twin ? twin.id : saveDraftQa(qaRow({ ...f, question: f.question || q.question }, { url: first.url, publisher: first.publisher, checked_at: j.checked_at }), j.sources.map((s, n) => ({ id: s.id, quote: n === 0 ? f.quote : null })));
+    });
+    if (!id) throw new Error("Answered, but the draft couldn't be saved. Write it by hand.");
+    const note = `From ${j.sources.map((s) => s.title || hostOf(s.url)).join(", ")}.`;
+    await rpc("fc_set_question", { question: q.id, target: "answered", note, record: id, tried: true });
+    Object.assign(q, { status: "answered", record_id: id, note });
+    return true;
+  } catch (err) {
+    await rpc("fc_set_question", { question: q.id, target: "open", note: err.message, tried: false }).catch(() => {});
+    Object.assign(q, { status: "open", note: err.message });
+    return false;
+  } finally {
+    qRun.busy.delete(q.id);
+    render();
+  }
+}
+
+async function runQuestions(list) {
+  if (qRun.running || !list.length) return 0;
+  Object.assign(qRun, { running: true, stop: false });
+  render();
+  let answered = 0;
+  const queue = [...list];
+  const worker = async () => {
+    while (queue.length && !qRun.stop) if (await answerOne(queue.shift())) answered++;
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  qRun.running = false;
+  await refresh().catch(() => {});
+  render();
+  return answered;
+}
+
+async function addQuestions(form) {
+  // One per line (questions can contain commas). Bullets and numbering are dropped.
+  const lines = form.questions.value.split(/\r?\n/).map((s) => s.replace(/^\s*(?:[-*•·▪●◦‣–—]+|\d+[.)])\s*/, "").trim()).filter((s) => s.length >= 5);
+  if (!lines.length) return flash("Type at least one question.", true);
+  try {
+    const added = await rpc("fc_add_questions", { questions: lines });
+    await refresh();
+    render();
+    form.questions.value = "";
+    const fresh = added.map((a) => data.questions.find((q) => q.id === a.id)).filter((q) => q?.status === "open");
+    if (!canPublish()) return flash(`Added ${added.length} question${added.length === 1 ? "" : "s"}.`);
+    flash(`Answering ${fresh.length} question${fresh.length === 1 ? "" : "s"} from Sources…`);
+    const n = await runQuestions(fresh);
+    flash(`Answered ${n} of ${fresh.length}. Answers are drafts under Q/A${n < fresh.length ? "; the rest are waiting for a source" : ""}.`);
+  } catch (err) {
+    flash(err.message, true);
+  }
+}
+
+// After new sources are read: retry waiting questions that now match them.
+async function retryOpenQuestions() {
+  if (!canPublish() || !srcRun.newlyRead.size) return 0;
+  const fresh = new Set(srcRun.newlyRead);
+  srcRun.newlyRead.clear();
+  const candidates = [];
+  for (const q of data.questions.filter((x) => x.status === "open" && x.tries < 5)) {
+    const hits = await rpc("fc_search_sources", { q: q.question, max_results: 8 }).catch(() => []);
+    if (hits.some((h) => fresh.has(h.source_id))) candidates.push(q);
+  }
+  return runQuestions(candidates);
+}
+
+// "Answered From" panel in the Q/A form.
+function answeredFromHtml(item) {
+  const links = data.qaSources.get(item.id) ?? [];
+  if (!links.length) return "";
+  return `<fieldset class="fgroup"><legend>Answered From</legend><ul class="qa-list wide">${links
+    .map(({ source: s, quote }) => `<li><a href="${esc(s.url)}" target="_blank" rel="noreferrer">${esc(sourceName(s))} ↗</a>${s.status !== "read" ? ` <span class="pill unchanged">${SRC_STATE[s.status][1]}</span>` : ""}${quote ? `<blockquote>“${esc(quote)}”</blockquote>` : ""}</li>`)
+    .join("")}</ul></fieldset>`;
+}
+
 // ---------- editor ----------
 let editing = null;
 function fieldHtml(c, std, value, isNew) {
@@ -904,6 +1350,7 @@ function openEditor(std, item = null) {
       return `<fieldset class="fgroup" data-group="${g}"><legend>${GROUPS[g]}</legend>${extra}${main}${more ? `<details class="more-review wide"><summary>More Review Details</summary><div class="fgroup">${more}</div></details>` : ""}</fieldset>`;
     })
     .join("");
+  if (item && std === "FRS") html += answeredFromHtml(item);
   if (item) html += `<p class="sub" style="margin-top:18px">DataSponge id <code>${esc(row.id)}</code> · local id <code>${esc(row.local_id)}</code> · version ${item.record.metadata.record_version}</p>`;
   if (!canPublish()) html = `<p class="notice">As a contributor you can save drafts. An editor publishes them.</p>` + html;
   $("#editor-body").innerHTML = html;
@@ -1135,6 +1582,7 @@ $("#editor-form").onsubmit = async (e) => {
       delete many.rows[editing.manyIndex].lookup;
       saveMany();
     }
+    if (editing.questionId) await rpc("fc_set_question", { question: editing.questionId, target: "answered", note: "Answered by hand.", record: res.id }).catch(() => {});
     $("#editor").close();
     await refresh();
     render();

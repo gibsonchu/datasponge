@@ -35,6 +35,12 @@
   "functions": {
     "api/autofill.js": {
       "maxDuration": 120
+    },
+    "api/source-read.js": {
+      "maxDuration": 300
+    },
+    "api/answer.js": {
+      "maxDuration": 180
     }
   }
 }

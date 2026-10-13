@@ -284,3 +284,17 @@ dialog#editor { width: min(780px, calc(100% - 24px)); max-height: calc(100vh - 2
   label.inline { flex: 1 1 100%; justify-content: space-between; }
   label.inline select { flex: 1; max-width: 70%; }
 }
+
+/* sources & questions */
+.dropzone { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px; border: 2px dashed var(--line); border-radius: 10px; cursor: pointer; background: #fafcfd; }
+.dropzone.over { border-color: var(--blue); background: var(--blue-soft); }
+.dropzone input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.dropzone:focus-within { outline: 2px solid var(--blue); outline-offset: 2px; }
+.table.compact col.c-qa { width: 80px; }
+.table.compact col.c-act-wide { width: 250px; }
+a.icon-action { display: inline-grid; place-items: center; text-decoration: none; color: inherit; font-weight: 700; }
+dialog#source-dialog { width: min(760px, calc(100% - 24px)); max-height: calc(100vh - 24px); }
+dialog#source-dialog .editor-body h2 { margin: 0 0 4px; }
+.qa-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 12px; }
+.qa-list li { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.qa-list blockquote { margin: 6px 0 0; padding-left: 10px; border-left: 3px solid var(--line); color: var(--muted); font-style: italic; font-size: 14px; }

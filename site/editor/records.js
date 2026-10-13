@@ -1,7 +1,7 @@
 /**
  * DataSponge 0.1 <-> flat rows, in the browser.
  *
- * Staff edit services (FSS) and answers & resources (FRS) as flat rows: one
+ * Staff edit services (FSS) and Q/A (FRS) as flat rows: one
  * form, or one CSV row. COLUMNS is the single source of truth for the form,
  * the CSV template, and the column guide. Records are validated here against
  * the DataSponge JSON Schemas (../standards) for friendly field errors; the
@@ -65,8 +65,8 @@ export const COLUMNS = [
   { key: "local_id", std: ["FSS", "FRS"], group: "system", fc: "local_id", help: "Short id. Leave blank for new records; keep it to update one." },
   { key: "status", std: ["FSS", "FRS"], group: "visibility", terms: "status", def: "published", label: "Status", fc: "(DataSponge status)", help: "Published is live. Draft is a work in progress. Hidden takes it offline. Only editors can publish." },
   { key: "audience", std: ["FSS", "FRS"], group: "visibility", terms: "visibility", def: "public", label: "Who Can See It", fc: "(DataSponge audience)", help: "Public shows it on Local Help and to the AI. AI-only keeps it off public pages." },
-  { key: "title", std: ["FSS", "FRS"], group: "basics", required: true, label: { FSS: "Service Name", FRS: "Title or Question" }, fc: "title", help: "" },
-  { key: "summary", std: ["FSS", "FRS"], group: "basics", required: true, long: true, label: { FSS: "What They Do", FRS: "Summary or Answer" }, fc: "summary", help: "" },
+  { key: "title", std: ["FSS", "FRS"], group: "basics", required: true, label: { FSS: "Service Name", FRS: "Question" }, fc: "title", help: "" },
+  { key: "summary", std: ["FSS", "FRS"], group: "basics", required: true, long: true, label: { FSS: "What They Do", FRS: "Answer" }, fc: "summary", help: "" },
   { key: "provider_name", formHidden: true, std: ["FSS"], group: "basics", label: "Provider (Organization)", fc: "service.provider.name", help: "Defaults to the service name." },
   { key: "service_type", std: ["FSS"], group: "basics", required: true, suggest: SERVICE_TYPES, label: "Service Type", fc: "service.type", help: "" },
   { key: "resource_type", std: ["FRS"], group: "basics", def: "faq_answer", suggest: RESOURCE_TYPES, label: "Resource Type", fc: "resource.type", help: "faq_answer shows as a quick answer on Local Help. Use guide, report, etc. for documents." },
