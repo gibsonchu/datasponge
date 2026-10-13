@@ -18,6 +18,7 @@ import {
   costHtml, readCost, setCost, markDirty, topicsHtml, stagesHtml, readStages, setStages, chipsHtml, setChips, chipEvents,
   availabilityHtml, readAvailability, setAvailability, detailsFor, DETAIL_KEYS, OPTIONAL_DETAILS, topicGroupEvents, syncTopicGroups, costText, hoursText, areaFromIds, availabilityKey,
 } from "./widgets.js";
+import { initFixes, fixesView, fixCount, trashedFixes, fixClick, fixChange, fixInput } from "./fixes.js";
 import { initStories, storiesView, storiesImportView, storiesManyView, storyTabs, storyCount, storyClick, storyChange, storyInput, storySubmit, storyDrop, trashedStories } from "./stories.js";
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -40,7 +41,7 @@ const CLIPS_URL = "https://flood-clips.vercel.app/";
 const cfg = await (await fetch("/config.json", { cache: "no-cache" })).json();
 let session = JSON.parse(sessionStorage.getItem("fc_workspace_session") || "null");
 let me = null;
-let data = { items: [], inbox: [], removals: [], sources: [], questions: [], qaSources: new Map(), stories: [] };
+let data = { items: [], inbox: [], removals: [], sources: [], questions: [], qaSources: new Map(), stories: [], fixes: [] };
 let view = "FSS";
 const lists = Object.fromEntries(["FSS", "FRS", "FMS"].map((s) => [s, { q: "", status: "", type: "", audience: "", sort: "new" }]));
 lists.sources = { q: "", status: "" };
@@ -180,15 +181,17 @@ async function rest(path, { method = "GET", body } = {}) {
 const rpc = (fn, args = {}) => rest(`rpc/${fn}`, { method: "POST", body: args });
 
 async function refresh() {
-  const [recs, inbox, removals, sources, questions, stories] = await Promise.all([
+  const [recs, inbox, removals, sources, questions, stories, fixes] = await Promise.all([
     rest("fc_workspace_records?select=id,status,audience,latest_revision,has_unpublished_changes,document,updated_at&limit=10000"),
     rest("fc_clip_inbox?select=*&order=created_at.desc&limit=500"),
     rest("fc_removal_inbox?select=*&order=created_at.desc&limit=500"),
     rpc("fc_sources"),
     rpc("fc_questions"),
     rpc("fc_stories"),
+    rpc("fc_fix_paths").catch(() => []),
   ]);
   data.stories = stories;
+  data.fixes = fixes;
   data.sources = sources;
   data.questions = questions;
   data.qaSources = new Map();
@@ -216,7 +219,9 @@ async function refresh() {
   $("#c-sources").textContent = data.sources.filter((s) => s.status !== "trashed").length;
   $("#c-questions").textContent = data.questions.filter((q) => q.status === "open").length || "";
   $("#c-stories").textContent = storyCount();
-  $("#c-trash").textContent = data.items.filter((i) => i.status === "excluded").length + trashedStories().length || "";
+  $("#c-fixes").textContent = fixCount();
+  $("#c-fixes-unreviewed").textContent = data.fixes.filter((f) => f.status === "published" && !f.reviewed_at).length || "";
+  $("#c-trash").textContent = data.items.filter((i) => i.status === "excluded").length + trashedStories().length + trashedFixes().length || "";
   $("#c-inbox").textContent = data.inbox.filter((s) => s.status === "pending").length || "";
   $("#c-removals").textContent = data.removals.filter((q) => q.status === "open").length || "";
 }
@@ -252,6 +257,7 @@ async function start() {
   $("#myRole").textContent = me.role;
   for (const el of document.querySelectorAll("[data-admin]")) el.hidden = !isAdmin();
   show("app");
+  initFixes({ data, esc, rpc, flash, render, act, canPublish, fmtDate, iconBtn, reload: async () => { await refresh(); render(); } });
   await initStories({
     data, esc, rpc, cfg, accessToken, flash, render, act, canPublish, fmtDate, iconBtn,
     reload: async () => { await refresh(); render(); },
@@ -288,7 +294,7 @@ $(".tabs").onclick = (e) => {
 };
 function render() {
   const el = $("#view");
-  const views = { many: manyView, fill: fillView, sources: sourcesView, questions: questionsView, stories: storiesView, storiesImport: storiesImportView, storiesMany: storiesManyView, FSS: () => listView("FSS"), FRS: () => listView("FRS"), FMS: clipsView, inbox: inboxView, removals: removalsView, import: importView, trash: trashView, people: () => '<p class="sub">Loading…</p>', log: () => '<p class="sub">Loading…</p>' };
+  const views = { many: manyView, fill: fillView, sources: sourcesView, questions: questionsView, stories: storiesView, fixes: fixesView, storiesImport: storiesImportView, storiesMany: storiesManyView, FSS: () => listView("FSS"), FRS: () => listView("FRS"), FMS: clipsView, inbox: inboxView, removals: removalsView, import: importView, trash: trashView, people: () => '<p class="sub">Loading…</p>', log: () => '<p class="sub">Loading…</p>' };
   el.innerHTML = (views[view] || views.FSS)();
   if (view === "import") wireImport();
   if (view === "people") peopleView();
@@ -479,17 +485,21 @@ function removalsView() {
 function trashView() {
   const items = data.items.filter((i) => i.status === "excluded").sort(SORTERS.new);
   const stories = trashedStories();
-  if (!items.length && !stories.length) return `<div class="empty"><h2>Trash is empty.</h2><p>Trashed records land here so they can be restored.</p></div>`;
+  const fixes = trashedFixes();
+  if (!items.length && !stories.length && !fixes.length) return `<div class="empty"><h2>Trash is empty.</h2><p>Trashed records land here so they can be restored.</p></div>`;
   return `<table class="table"><thead><tr><th>Record</th><th>Kind</th><th>Updated</th><th></th></tr></thead><tbody>${items
     .map((i) => `<tr><td class="name">${esc(i.record.title)}</td><td>${esc(NAMES[i.standard].one)}</td><td class="sub">${esc(fmtDate(i.updated_at))}</td><td><div class="row-actions">${canPublish() ? `<button class="btn" data-restore="${i.id}">Restore</button>` : ""}</div></td></tr>`)
     .join("")}${stories
     .map((st) => `<tr><td class="name clip-cell">${esc(st.text)}</td><td>story #${st.story_no}</td><td class="sub">${esc(fmtDate(st.updated_at))}</td><td><div class="row-actions">${canPublish() ? `<button class="btn" data-story-restore="${st.id}">Restore</button>` : ""}</div></td></tr>`)
+    .join("")}${fixes
+    .map((f) => `<tr><td class="name clip-cell">${esc(f.problem)} → ${esc(f.fix)}</td><td>fix #${f.path_no}</td><td class="sub">${esc(fmtDate(f.updated_at))}</td><td><div class="row-actions">${canPublish() ? `<button class="btn" data-fix-restore="${f.id}">Restore</button>` : ""}</div></td></tr>`)
     .join("")}</tbody></table>`;
 }
 
 // ---------- events ----------
 $("#view").addEventListener("input", (e) => {
   if (storyInput(e.target)) return;
+  if (fixInput(e.target)) return;
   if (e.target.id === "list-q") {
     lists[view].q = e.target.value;
     saveHash();
@@ -502,6 +512,7 @@ $("#view").addEventListener("input", (e) => {
 });
 $("#view").addEventListener("change", (e) => {
   if (storyChange(e.target)) return;
+  if (fixChange(e.target)) return;
   if (e.target.id === "many-save-as") many.saveAs = e.target.value;
   const key = { "list-status": "status", "list-type": "type", "list-sort": "sort", "list-audience": "audience" }[e.target.id];
   if (key) {
@@ -526,6 +537,7 @@ $("#view").addEventListener("click", async (e) => {
   const t = e.target.closest("button");
   if (!t) return;
   if (storyClick(t)) return;
+  if (fixClick(t)) return;
   if (t.dataset.go === "import" && (view === "FSS" || view === "FRS")) { ui.importStd = view; ui.importResult = null; ui.importFile = null; ui.ignored = []; }
   if (t.dataset.go) return go(t.dataset.go);
   if (t.dataset.sourceOpen) return sourceDialog(t.dataset.sourceOpen);

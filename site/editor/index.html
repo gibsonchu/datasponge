@@ -62,6 +62,7 @@
   <nav class="tabs" aria-label="Editor sections">
     <button data-view="FSS">Services <span class="count" id="c-FSS"></span></button>
     <button data-view="stories">Stories <span class="count" id="c-stories"></span></button>
+    <button data-view="fixes" title="Problem → fix → programs, used by Flood Chat">Fixes <span class="count" id="c-fixes"></span><span class="count alert" id="c-fixes-unreviewed" title="Published fixes not reviewed yet"></span></button>
     <button data-view="sources">Sources <span class="count" id="c-sources"></span></button>
     <button data-view="FRS">Q/A <span class="count" id="c-FRS"></span><span class="count alert" id="c-questions" title="Questions waiting for a source"></span></button>
     <button data-view="FMS">Clips <span class="count" id="c-FMS"></span></button>
@@ -101,6 +102,22 @@
       <p class="form-error" id="story-error" role="alert"></p>
       <button type="button" class="btn" data-close>Cancel</button>
       <button type="submit" class="btn primary" id="story-save">Add Story</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="fix-editor" aria-labelledby="fix-title">
+  <form id="fix-form" novalidate>
+    <div class="editor-head">
+      <h2 id="fix-title">Add a Fix</h2>
+      <button type="button" class="icon-btn" data-close aria-label="Close">×</button>
+    </div>
+    <div class="editor-body" id="fix-body"></div>
+    <div class="editor-foot">
+      <p class="form-error" id="fix-error" role="alert"></p>
+      <button type="button" class="btn" id="fix-cancel" data-close>Cancel</button>
+      <button type="submit" class="btn" id="fix-save">Save</button>
+      <button type="submit" class="btn primary" id="fix-save-reviewed" hidden>Publish as Reviewed</button>
     </div>
   </form>
 </dialog>
