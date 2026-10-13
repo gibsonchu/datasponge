@@ -1,6 +1,6 @@
 # Supabase reference implementation
 
-This is a pilot editorial catalog, not a canonical-document ingestion API yet. Apply `001` through `012` in order to a **new Supabase project** using migrations. Do not run the baseline on an existing DataSponge installation. Supabase Auth and the `pg_jsonschema` extension are required. The SQL installs its bundled draft schemas; the JSON files in `standards/` describe interchange documents.
+This is a pilot editorial catalog, not a canonical-document ingestion API yet. Apply `001` through `013` in order to a **new Supabase project** using migrations. Do not run the baseline on an existing DataSponge installation. Supabase Auth and the `pg_jsonschema` extension are required. The SQL installs its bundled draft schemas; the JSON files in `standards/` describe interchange documents.
 
 Keep `fc_private` out of the Data API's exposed schemas. Only `public` is exposed. Public reads use `fc_records` and return reviewed standard documents. `fc_current_catalog` also excludes closed, historical, temporarily unavailable, and expired help listings. Raw catalog writes are denied. Drafts are scoped to authenticated members, and publication requires an editor or administrator.
 
@@ -52,3 +52,15 @@ Answers (FRS `faq_answer` records, shown as **Q/A** in the Editor) now come from
 - `fc_questions()`, `fc_add_questions(questions)`, `fc_set_question(...)`: questions waiting for an answer. `site/api/answer.js` answers them from Sources only.
 - `fc_search_sources(q, max_results)`: public passage search over sources that have been read (all words first, then any). Flood Chat calls it when Q/A isn't specific enough. 012 makes it callable with the publishable key.
 - 011 seeds Sources from the links the existing Q/A cite (except bluedots.nyc) and links them.
+
+## 013: Stories
+
+Neighborhood stories (an image plus a short text, tagged with place, when, who it's for, and purpose) move from the old Google Sheet into `fc_private.stories`. `story_no` is the stable number Flood Chat and the sheet's `ID` column use.
+
+- `fc_stories()`: every story in the caller's scope (members), as JSON.
+- `fc_save_stories(items, source)`: add or update stories, matched by `id`, else `story_no`, else added. Fields left out keep their values; all or nothing. Contributors save drafts; editors publish. A published story needs an image.
+- `fc_set_story_status(story, target)`: `published`, `draft`, `hidden`, `trashed`, `restore`.
+- `fc_published_stories()`: published stories, open to anyone (Flood Chat reads these).
+- Public `stories` storage bucket for uploaded images; only members upload.
+
+Choices and the sheet's columns are defined once in `site/editor/stories-model.js`, used by both the Editor's CSV upload and the one-time sheet import.

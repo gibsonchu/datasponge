@@ -41,6 +41,9 @@
     },
     "api/answer.js": {
       "maxDuration": 180
+    },
+    "api/describe-story.js": {
+      "maxDuration": 60
     }
   }
 }

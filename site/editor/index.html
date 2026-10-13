@@ -63,6 +63,7 @@
     <button data-view="FSS">Services <span class="count" id="c-FSS"></span></button>
     <button data-view="FRS">Q/A <span class="count" id="c-FRS"></span><span class="count alert" id="c-questions" title="Questions waiting for a source"></span></button>
     <button data-view="sources">Sources <span class="count" id="c-sources"></span></button>
+    <button data-view="stories">Stories <span class="count" id="c-stories"></span></button>
     <button data-view="FMS">Clips <span class="count" id="c-FMS"></span></button>
     <button data-view="inbox">Clip Inbox <span class="count alert" id="c-inbox"></span></button>
     <button data-view="removals">Removal Requests <span class="count alert" id="c-removals"></span></button>
@@ -85,6 +86,21 @@
       <p class="form-error" id="editor-error" role="alert"></p>
       <button type="button" class="btn" data-close>Cancel</button>
       <button type="submit" class="btn primary" id="editor-save">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="story-editor" aria-labelledby="story-title">
+  <form id="story-form" novalidate>
+    <div class="editor-head">
+      <h2 id="story-title">Add a Story</h2>
+      <button type="button" class="icon-btn" data-close aria-label="Close">×</button>
+    </div>
+    <div class="editor-body" id="story-body"></div>
+    <div class="editor-foot">
+      <p class="form-error" id="story-error" role="alert"></p>
+      <button type="button" class="btn" data-close>Cancel</button>
+      <button type="submit" class="btn primary" id="story-save">Add Story</button>
     </div>
   </form>
 </dialog>

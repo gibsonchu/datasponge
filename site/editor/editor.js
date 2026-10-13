@@ -18,6 +18,7 @@ import {
   costHtml, readCost, setCost, markDirty, topicsHtml, stagesHtml, readStages, setStages, chipsHtml, setChips, chipEvents,
   availabilityHtml, readAvailability, setAvailability, detailsFor, DETAIL_KEYS, OPTIONAL_DETAILS, topicGroupEvents, syncTopicGroups, costText, hoursText, areaFromIds, availabilityKey,
 } from "./widgets.js";
+import { initStories, storiesView, storiesImportView, storiesManyView, storyTabs, storyCount, storyClick, storyChange, storyInput, storySubmit, storyDrop, trashedStories } from "./stories.js";
 
 const $ = (s, el = document) => el.querySelector(s);
 const SMALL_WORDS = new Set(["a", "an", "and", "or", "the", "of", "to", "in", "on", "for", "by"]);
@@ -39,7 +40,7 @@ const CLIPS_URL = "https://flood-clips.vercel.app/";
 const cfg = await (await fetch("/config.json", { cache: "no-cache" })).json();
 let session = JSON.parse(sessionStorage.getItem("fc_workspace_session") || "null");
 let me = null;
-let data = { items: [], inbox: [], removals: [], sources: [], questions: [], qaSources: new Map() };
+let data = { items: [], inbox: [], removals: [], sources: [], questions: [], qaSources: new Map(), stories: [] };
 let view = "FSS";
 const lists = Object.fromEntries(["FSS", "FRS", "FMS"].map((s) => [s, { q: "", status: "", type: "", audience: "", sort: "new" }]));
 lists.sources = { q: "", status: "" };
@@ -179,13 +180,15 @@ async function rest(path, { method = "GET", body } = {}) {
 const rpc = (fn, args = {}) => rest(`rpc/${fn}`, { method: "POST", body: args });
 
 async function refresh() {
-  const [recs, inbox, removals, sources, questions] = await Promise.all([
+  const [recs, inbox, removals, sources, questions, stories] = await Promise.all([
     rest("fc_workspace_records?select=id,status,audience,latest_revision,has_unpublished_changes,document,updated_at&limit=10000"),
     rest("fc_clip_inbox?select=*&order=created_at.desc&limit=500"),
     rest("fc_removal_inbox?select=*&order=created_at.desc&limit=500"),
     rpc("fc_sources"),
     rpc("fc_questions"),
+    rpc("fc_stories"),
   ]);
+  data.stories = stories;
   data.sources = sources;
   data.questions = questions;
   data.qaSources = new Map();
@@ -212,7 +215,8 @@ async function refresh() {
   for (const s of ["FSS", "FRS", "FMS"]) $("#c-" + s).textContent = live(s);
   $("#c-sources").textContent = data.sources.filter((s) => s.status !== "trashed").length;
   $("#c-questions").textContent = data.questions.filter((q) => q.status === "open").length || "";
-  $("#c-trash").textContent = data.items.filter((i) => i.status === "excluded").length || "";
+  $("#c-stories").textContent = storyCount();
+  $("#c-trash").textContent = data.items.filter((i) => i.status === "excluded").length + trashedStories().length || "";
   $("#c-inbox").textContent = data.inbox.filter((s) => s.status === "pending").length || "";
   $("#c-removals").textContent = data.removals.filter((q) => q.status === "open").length || "";
 }
@@ -248,6 +252,12 @@ async function start() {
   $("#myRole").textContent = me.role;
   for (const el of document.querySelectorAll("[data-admin]")) el.hidden = !isAdmin();
   show("app");
+  await initStories({
+    data, esc, rpc, cfg, accessToken, flash, render, act, canPublish, fmtDate, iconBtn,
+    reload: async () => { await refresh(); render(); },
+    download: (name, text) => download(name, text),
+    toCsv: (keys, rows) => toCsv(keys, rows),
+  });
   await refresh();
   go(new URLSearchParams(location.hash.slice(1)).get("v") || "FSS", true);
 }
@@ -268,7 +278,7 @@ function go(v, fromHash = false) {
   }
   saveHash();
   // Pages opened from a tab (Upload CSV, Add Many, Fill Missing Details, Ask Questions) keep that tab highlighted.
-  const tab = { import: ui.importStd, many: "FSS", fill: "FSS", questions: "FRS" }[v] ?? v;
+  const tab = { import: ui.importStd, many: "FSS", fill: "FSS", questions: "FRS", ...storyTabs }[v] ?? v;
   for (const b of document.querySelectorAll("[data-view]")) b.dataset.view === tab ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current");
   render();
 }
@@ -278,7 +288,7 @@ $(".tabs").onclick = (e) => {
 };
 function render() {
   const el = $("#view");
-  const views = { many: manyView, fill: fillView, sources: sourcesView, questions: questionsView, FSS: () => listView("FSS"), FRS: () => listView("FRS"), FMS: clipsView, inbox: inboxView, removals: removalsView, import: importView, trash: trashView, people: () => '<p class="sub">Loading…</p>', log: () => '<p class="sub">Loading…</p>' };
+  const views = { many: manyView, fill: fillView, sources: sourcesView, questions: questionsView, stories: storiesView, storiesImport: storiesImportView, storiesMany: storiesManyView, FSS: () => listView("FSS"), FRS: () => listView("FRS"), FMS: clipsView, inbox: inboxView, removals: removalsView, import: importView, trash: trashView, people: () => '<p class="sub">Loading…</p>', log: () => '<p class="sub">Loading…</p>' };
   el.innerHTML = (views[view] || views.FSS)();
   if (view === "import") wireImport();
   if (view === "people") peopleView();
@@ -468,14 +478,18 @@ function removalsView() {
 // ---------- trash ----------
 function trashView() {
   const items = data.items.filter((i) => i.status === "excluded").sort(SORTERS.new);
-  if (!items.length) return `<div class="empty"><h2>Trash is empty.</h2><p>Trashed records land here so they can be restored.</p></div>`;
+  const stories = trashedStories();
+  if (!items.length && !stories.length) return `<div class="empty"><h2>Trash is empty.</h2><p>Trashed records land here so they can be restored.</p></div>`;
   return `<table class="table"><thead><tr><th>Record</th><th>Kind</th><th>Updated</th><th></th></tr></thead><tbody>${items
     .map((i) => `<tr><td class="name">${esc(i.record.title)}</td><td>${esc(NAMES[i.standard].one)}</td><td class="sub">${esc(fmtDate(i.updated_at))}</td><td><div class="row-actions">${canPublish() ? `<button class="btn" data-restore="${i.id}">Restore</button>` : ""}</div></td></tr>`)
+    .join("")}${stories
+    .map((st) => `<tr><td class="name clip-cell">${esc(st.text)}</td><td>story #${st.story_no}</td><td class="sub">${esc(fmtDate(st.updated_at))}</td><td><div class="row-actions">${canPublish() ? `<button class="btn" data-story-restore="${st.id}">Restore</button>` : ""}</div></td></tr>`)
     .join("")}</tbody></table>`;
 }
 
 // ---------- events ----------
 $("#view").addEventListener("input", (e) => {
+  if (storyInput(e.target)) return;
   if (e.target.id === "list-q") {
     lists[view].q = e.target.value;
     saveHash();
@@ -487,6 +501,7 @@ $("#view").addEventListener("input", (e) => {
   }
 });
 $("#view").addEventListener("change", (e) => {
+  if (storyChange(e.target)) return;
   if (e.target.id === "many-save-as") many.saveAs = e.target.value;
   const key = { "list-status": "status", "list-type": "type", "list-sort": "sort", "list-audience": "audience" }[e.target.id];
   if (key) {
@@ -510,6 +525,7 @@ $("#view").addEventListener("change", (e) => {
 $("#view").addEventListener("click", async (e) => {
   const t = e.target.closest("button");
   if (!t) return;
+  if (storyClick(t)) return;
   if (t.dataset.go === "import" && (view === "FSS" || view === "FRS")) { ui.importStd = view; ui.importResult = null; ui.importFile = null; ui.ignored = []; }
   if (t.dataset.go) return go(t.dataset.go);
   if (t.dataset.sourceOpen) return sourceDialog(t.dataset.sourceOpen);
@@ -566,6 +582,7 @@ const showPicked = () => {
   const files = [...($("#source-files")?.files ?? [])];
   if ($("#source-picked")) $("#source-picked").textContent = files.length ? files.map((f) => f.name).join(", ") : "Up to 25 MB each.";
 };
+for (const type of ["dragover", "dragleave", "drop"]) $("#view").addEventListener(type, storyDrop);
 $("#view").addEventListener("dragover", (e) => {
   const z = e.target.closest("#source-drop");
   if (!z) return;
@@ -584,6 +601,7 @@ $("#view").addEventListener("drop", (e) => {
 $("#view").addEventListener("change", (e) => { if (e.target.id === "source-files") showPicked(); });
 $("#view").addEventListener("toggle", (e) => { if (e.target.id === "inbox-history") ui.showHistory = e.target.open; }, true);
 $("#view").addEventListener("submit", (e) => {
+  if (storySubmit(e)) return;
   if (e.target.id === "sources-form") {
     e.preventDefault();
     return addSources(e.target);
