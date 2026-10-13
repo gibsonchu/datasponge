@@ -6,7 +6,7 @@ DataSponge soaks up flood information from many sources (organizations, city pro
 
 | Uses DataSponge | What it shows |
 |---|---|
-| [Local Help](https://flooding-local-help.vercel.app) | Public services and quick answers |
+| [Local Help](https://localhelp.floodline.nyc) | Public services and quick answers |
 | [Flood Clips](https://flood-clips.vercel.app) | Resident flood footage on a map |
 | Flood Chat | The AI assistant, which can also use AI-only records |
 
