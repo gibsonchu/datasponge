@@ -362,3 +362,16 @@ select.state { padding: 4px 6px; }
 .qa-list blockquote { border-left-color: var(--ochre); }
 code, .sub code { font-family: var(--mono); }
 .state.public { background: var(--card); color: var(--ink); border: 1px solid var(--field-line); }
+
+/* Leads */
+.leads-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 4px; }
+.leads-head .sub { margin: 0; font-size: 14px; }
+.leads-head .seg { margin: 0; }
+.lead-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0 8px; }
+.lead-stat { display: grid; align-content: start; gap: 2px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.lead-stat > span { font: 500 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lead-stat strong { font: 600 28px var(--sans); }
+.lead-stat small { color: var(--muted); font-size: 13px; }
+.lead-stat ul { margin: 6px 0 0; padding: 0; list-style: none; font-size: 14px; }
+.lead-stat li { display: flex; justify-content: space-between; gap: 8px; }
+.lead-h { margin: 24px 0 10px; font-size: 18px; }
