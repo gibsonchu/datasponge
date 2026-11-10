@@ -1,12 +1,13 @@
--- 017: Leads. Page views on Local Help and the calls, website visits, and
--- emails it sends to listed partners, kept in one place for every FloodLine
--- product (Local Help, Blue Dots Urgent, Blue Dots).
+-- 017: Leads. Page views of the Local Help directories (localhelp.floodline.nyc
+-- and Blue Dots' own Local Help page) and the calls, website visits, and emails
+-- they send to listed partners, kept in one place for every FloodLine product
+-- (Local Help, Blue Dots Urgent, Blue Dots).
 --
---  * fc_log_lead(text): Local Help sends one event as a plain-text JSON body
+--  * fc_log_lead(text): a site sends one event as a plain-text JSON body
 --    (navigator.sendBeacon). Anyone may call it; it only ever inserts.
 --  * fc_lead_report(days): totals, leads by partner, and recent leads for the
 --    Editor's Leads tab. Members only.
---  * fc_leads_for(via, days): the raw events that came through one product, for
+--  * fc_leads_for(source, days): the raw events that came through one product, for
 --    that product's own admin (which knows who its refs belong to). Server
 --    keys only.
 --
@@ -18,7 +19,7 @@
 create table fc_private.lead_events(
  id bigint generated always as identity primary key,
  at timestamptz not null default now(),
- site text not null default 'local-help' check (site in ('local-help')),
+ site text not null default 'local-help' check (site in ('local-help', 'bluedots')),
  type text not null check (type in ('page_view', 'outbound_click')),
  visitor_id text not null check (visitor_id ~ '^[A-Za-z0-9_-]{8,64}$'),
  via text check (via in ('bdu', 'bdu_sms', 'bluedots')),
@@ -51,8 +52,9 @@ begin
  if (select count(*) from fc_private.lead_events where at > now() - interval '1 minute') >= 1000 then
   raise exception 'Too many events right now.';
  end if;
- insert into fc_private.lead_events(type, visitor_id, via, ref, listing_id, listing_name, link_kind, link_url, borough, audience, need, search, referrer)
+ insert into fc_private.lead_events(site, type, visitor_id, via, ref, listing_id, listing_name, link_kind, link_url, borough, audience, need, search, referrer)
  values (
+  coalesce(nullif(p->>'site', ''), 'local-help'),
   p->>'type',
   p->>'visitor_id',
   nullif(p->>'via', ''),
@@ -70,7 +72,7 @@ end $$;
 
 -- Who a row stands for: the product's ref when there is one, else the browser.
 create function fc_private.lead_person(e fc_private.lead_events) returns text language sql immutable set search_path='' as $$
- select coalesce('r:' || e.via || ':' || e.ref, 'v:' || e.visitor_id)
+ select coalesce('r:' || coalesce(e.via, e.site) || ':' || e.ref, 'v:' || e.visitor_id)
 $$;
 
 create function public.fc_lead_report(days integer default 30) returns jsonb language plpgsql stable security definer set search_path='' as $$
@@ -85,23 +87,23 @@ begin
     'leads', count(*) filter (where e.type = 'outbound_click'),
     'leaders', count(distinct fc_private.lead_person(e)) filter (where e.type = 'outbound_click'),
     'by_via', (select coalesce(jsonb_object_agg(v, n), '{}') from (
-      select coalesce(x.via, 'direct') v, count(distinct fc_private.lead_person(x)) n from fc_private.lead_events x where x.at > since group by 1) t))
+      select coalesce(x.via, case when x.site = 'bluedots' then 'bluedots' else 'direct' end) v, count(distinct fc_private.lead_person(x)) n from fc_private.lead_events x where x.at > since group by 1) t))
    from fc_private.lead_events e where e.at > since),
   'partners', (
    select coalesce(jsonb_agg(row_to_json(t) order by t.total desc, t.name), '[]') from (
-    select coalesce(max(e.listing_name), max(e.link_url), 'Unknown') as name, max(e.listing_id) as listing_id,
+    select e.site, coalesce(max(e.listing_name), max(e.link_url), 'Unknown') as name, max(e.listing_id) as listing_id,
      count(*) filter (where e.link_kind = 'phone') as calls,
      count(*) filter (where e.link_kind = 'website') as sites,
      count(*) filter (where e.link_kind = 'email') as emails,
      count(*) as total,
      count(distinct fc_private.lead_person(e)) as people,
-     count(distinct fc_private.lead_person(e)) filter (where e.via is not null) as via_products,
+     count(distinct fc_private.lead_person(e)) filter (where e.via is not null or e.site <> 'local-help') as via_products,
      max(e.at) as last_at
     from fc_private.lead_events e where e.at > since and e.type = 'outbound_click'
-    group by coalesce(e.listing_id, e.link_url) limit 500) t),
+    group by e.site, coalesce(e.listing_id, e.link_url) limit 500) t),
   'recent', (
    select coalesce(jsonb_agg(row_to_json(t)), '[]') from (
-    select e.at, e.listing_name, e.link_kind, e.link_url, e.via, e.ref is not null as has_ref, left(e.visitor_id, 6) as visitor,
+    select e.at, e.site, e.listing_name, e.link_kind, e.link_url, e.via, e.ref is not null as has_ref, left(e.visitor_id, 6) as visitor,
      e.borough, e.need, e.search, e.referrer
     from fc_private.lead_events e where e.at > since and e.type = 'outbound_click' order by e.at desc limit 200) t));
 end $$;
@@ -110,7 +112,7 @@ end $$;
 create function public.fc_leads_for(source text, days integer default 30) returns setof fc_private.lead_events language sql stable security definer set search_path='' as $$
  select * from fc_private.lead_events
  where at > now() - make_interval(days => greatest(1, least(days, 366)))
-   and (via = source or (source = 'bdu' and via = 'bdu_sms'))
+   and (via = source or site = source or (source = 'bdu' and via = 'bdu_sms'))
  order by at desc limit 5000
 $$;
 
