@@ -18,7 +18,7 @@ import {
   costHtml, readCost, setCost, markDirty, topicsHtml, stagesHtml, readStages, setStages, chipsHtml, setChips, chipEvents,
   availabilityHtml, readAvailability, setAvailability, detailsFor, DETAIL_KEYS, OPTIONAL_DETAILS, topicGroupEvents, syncTopicGroups, costText, hoursText, areaFromIds, availabilityKey,
 } from "./widgets.js";
-import { leadsView } from "./leads.js";
+import { analyticsView } from "./analytics.js";
 import { initStories, storiesView, storiesImportView, storiesManyView, storyTabs, storyCount, storyClick, storyChange, storyInput, storySubmit, storyDrop, trashedStories } from "./stories.js";
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -271,7 +271,7 @@ function saveHash() {
   history.replaceState(null, "", "#" + p);
 }
 function go(v, fromHash = false) {
-  view = v;
+  view = v === "leads" ? "analytics" : v; // the Leads tab became Analytics; old links still land there
   if (fromHash && lists[v]) {
     const p = new URLSearchParams(location.hash.slice(1));
     for (const k of Object.keys(lists[v])) if (p.has(k)) lists[v][k] = p.get(k);
@@ -289,12 +289,12 @@ $(".tabs").onclick = (e) => {
 };
 function render() {
   const el = $("#view");
-  const views = { many: manyView, fill: fillView, sources: sourcesView, questions: questionsView, stories: storiesView, storiesImport: storiesImportView, storiesMany: storiesManyView, FSS: () => listView("FSS"), FRS: () => listView("FRS"), FMS: clipsView, inbox: inboxView, removals: removalsView, import: importView, trash: trashView, people: () => '<p class="sub">Loading…</p>', leads: () => '<p class="sub">Loading…</p>', log: () => '<p class="sub">Loading…</p>' };
+  const views = { many: manyView, fill: fillView, sources: sourcesView, questions: questionsView, stories: storiesView, storiesImport: storiesImportView, storiesMany: storiesManyView, FSS: () => listView("FSS"), FRS: () => listView("FRS"), FMS: clipsView, inbox: inboxView, removals: removalsView, import: importView, trash: trashView, people: () => '<p class="sub">Loading…</p>', analytics: () => '<p class="sub">Loading…</p>', log: () => '<p class="sub">Loading…</p>' };
   el.innerHTML = (views[view] || views.FSS)();
   if (view === "import") wireImport();
   if (view === "people") peopleView();
   if (view === "log") logView();
-  if (view === "leads") leadsView(el, { rpc, esc });
+  if (view === "analytics") analyticsView(el, { rpc, esc });
 }
 
 // ---------- shared bits ----------

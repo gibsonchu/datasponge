@@ -375,3 +375,22 @@ code, .sub code { font-family: var(--mono); }
 .lead-stat ul { margin: 6px 0 0; padding: 0; list-style: none; font-size: 14px; }
 .lead-stat li { display: flex; justify-content: space-between; gap: 8px; }
 .lead-h { margin: 24px 0 10px; font-size: 18px; }
+.lead-h3 { margin: 18px 0 8px; font-size: 15px; }
+.site-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin: 12px 0 8px; }
+.site-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; min-width: 0; }
+.site-card h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 0 10px; font-size: 17px; }
+.site-card h3 a { font-weight: 400; }
+.site-nums { display: flex; gap: 24px; margin-bottom: 10px; }
+.site-nums span, .chart-title { display: block; margin: 0; font: 500 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.site-nums strong { font: 600 24px var(--sans); }
+.spark { margin: 4px 0 12px; }
+.spark svg { display: block; width: 100%; height: 84px; }
+.spark .mark { fill: var(--teal); }
+.spark .hit { fill: transparent; }
+.spark .bar:hover .mark { fill: var(--ink); }
+.spark .base { stroke: var(--line); stroke-width: 1; }
+.spark figcaption { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; font: 400 11px var(--mono); color: var(--muted); }
+.site-lists { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.site-lists ol { margin: 6px 0 0; padding: 0; list-style: none; font-size: 13px; }
+.site-lists li { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; border-bottom: 1px solid var(--line); }
+.site-lists li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
