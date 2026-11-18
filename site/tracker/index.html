@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>FloodLine Tracker</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23101D27'/%3E%3Cpath d='M7 10h18M7 16h18M7 22h11' stroke='%23F3F2EC' stroke-width='2'/%3E%3Ccircle cx='23' cy='22' r='3' fill='%23D3A765'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/tracker/tracker.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/tracker/"><span class="mark" aria-hidden="true">≋</span><span>FloodLine</span><span class="badge">Tracker</span></a>
+  <div class="who" id="who" hidden>
+    <a href="/editor/">Editor</a>
+    <span id="me"></span>
+    <button type="button" class="link-btn" id="sign-out">Sign out</button>
+  </div>
+</header>
+
+<section id="login" class="card narrow" hidden>
+  <h1>Sign in</h1>
+  <p class="muted">Use your DataSponge account.</p>
+  <form id="password-form">
+    <label>Email<input name="email" type="email" autocomplete="username" required></label>
+    <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+    <button class="btn primary" type="submit">Sign in</button>
+  </form>
+  <form id="link-form">
+    <p class="muted small">No password? We'll email you a sign-in link.</p>
+    <label>Email<input name="email" type="email" autocomplete="email" required></label>
+    <button class="btn" type="submit">Email me a link</button>
+  </form>
+  <p class="msg" id="login-msg" role="status"></p>
+</section>
+
+<section id="not-member" class="card narrow" hidden>
+  <h1>Not on the team list yet</h1>
+  <p>Ask Gibson to add <strong id="nm-email"></strong> in the DataSponge Editor under People.</p>
+  <button class="btn" type="button" id="nm-out">Sign out</button>
+</section>
+
+<main id="app" hidden>
+  <div class="bar">
+    <nav class="tabs" id="tabs" role="tablist"></nav>
+    <button class="btn primary" type="button" id="new-btn">+ Report</button>
+  </div>
+
+  <form id="new-form" class="card" hidden>
+    <div class="grid2">
+      <label>Product<select name="product" required></select></label>
+      <label>Type<select name="kind">
+        <option value="bug">Bug</option>
+        <option value="issue">Issue</option>
+        <option value="feature">Feature request</option>
+      </select></label>
+    </div>
+    <label>Title<input name="title" required minlength="3" maxlength="200" placeholder="Map pin shows the wrong address"></label>
+    <label>Details<textarea name="details" rows="4" maxlength="10000" placeholder="Where it happens, what you expected, a link or screenshot URL"></textarea></label>
+    <div class="row">
+      <button class="btn primary" type="submit">Send</button>
+      <button class="link-btn" type="button" id="new-cancel">Cancel</button>
+    </div>
+    <p class="msg" role="status"></p>
+  </form>
+
+  <div class="filters">
+    <select id="f-product" aria-label="Product"><option value="">All products</option></select>
+    <select id="f-kind" aria-label="Type"><option value="">All types</option><option value="bug">Bugs</option><option value="issue">Issues</option><option value="feature">Feature requests</option></select>
+    <input id="f-q" type="search" placeholder="Search" aria-label="Search">
+  </div>
+
+  <ul class="items" id="items"></ul>
+</main>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<script type="module" src="/tracker/tracker.js"></script>
+</body>
+</html>

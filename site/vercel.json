@@ -37,11 +37,29 @@
       "source": "/editor",
       "destination": "/editor/",
       "permanent": false
+    },
+    {
+      "source": "/tracker",
+      "destination": "/tracker/",
+      "permanent": false
     }
   ],
   "headers": [
     {
       "source": "/editor/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
+    },
+    {
+      "source": "/tracker/(.*)",
       "headers": [
         {
           "key": "X-Frame-Options",
