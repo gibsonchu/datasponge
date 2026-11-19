@@ -34,18 +34,15 @@ const GROUPS = { basics: "Basics", contact: "Contact", where: "Service Area", wh
 const STATUS_LABEL = { published: "Published", draft: "Draft", hidden: "Hidden" };
 const AUDIENCE_LABEL = { public: "Public", internal: "AI-only" };
 const SORTS = { new: "Last updated (newest)", old: "Last updated (oldest)", az: "Name (A–Z)", za: "Name (Z–A)" };
-const DEPTHS = { ankle: "Ankle-deep", knee: "Knee-deep", waist: "Waist-deep", above_waist: "Above the waist", unknown: "Not sure" };
-const WHERE = { street: "Street", highway: "Highway", subway: "Subway", other: "Somewhere else (neighborhood only)" };
-const CLIPS_URL = "https://flood-clips.vercel.app/";
 
 const cfg = await (await fetch("/config.json", { cache: "no-cache" })).json();
 let session = JSON.parse(sessionStorage.getItem("fc_workspace_session") || "null");
 let me = null;
-let data = { items: [], inbox: [], removals: [], sources: [], questions: [], qaSources: new Map(), stories: [] };
+let data = { items: [], sources: [], questions: [], qaSources: new Map(), stories: [] };
 let view = "FSS";
 const lists = Object.fromEntries(["FSS", "FRS", "FMS"].map((s) => [s, { q: "", status: "", type: "", audience: "", sort: "new" }]));
 lists.sources = { q: "", status: "" };
-const ui = { importStd: "FSS", importFile: null, importRows: null, importResult: null, ignored: [], showHistory: false };
+const ui = { importStd: "FSS", importFile: null, importRows: null, importResult: null, ignored: [] };
 const canPublish = () => me && ["editor", "admin"].includes(me.role);
 const isAdmin = () => me?.role === "admin";
 
@@ -181,10 +178,8 @@ async function rest(path, { method = "GET", body } = {}) {
 const rpc = (fn, args = {}) => rest(`rpc/${fn}`, { method: "POST", body: args });
 
 async function refresh() {
-  const [recs, inbox, removals, sources, questions, stories] = await Promise.all([
+  const [recs, sources, questions, stories] = await Promise.all([
     rest("fc_workspace_records?select=id,status,audience,latest_revision,has_unpublished_changes,document,updated_at&limit=10000"),
-    rest("fc_clip_inbox?select=*&order=created_at.desc&limit=500"),
-    rest("fc_removal_inbox?select=*&order=created_at.desc&limit=500"),
     rpc("fc_sources"),
     rpc("fc_questions"),
     rpc("fc_stories"),
@@ -210,16 +205,12 @@ async function refresh() {
       updated_at: r.updated_at,
       row: r.document.standard === "FMS" ? null : toRow(r.document, { status: r.status === "excluded" ? "draft" : r.status, audience: r.audience }),
     }));
-  data.inbox = inbox;
-  data.removals = removals;
   const live = (s) => data.items.filter((i) => i.standard === s && i.status !== "excluded").length;
-  for (const s of ["FSS", "FRS", "FMS"]) $("#c-" + s).textContent = live(s);
+  for (const s of ["FSS", "FRS"]) $("#c-" + s).textContent = live(s);
   $("#c-sources").textContent = data.sources.filter((s) => s.status !== "trashed").length;
   $("#c-questions").textContent = data.questions.filter((q) => q.status === "open").length || "";
   $("#c-stories").textContent = storyCount();
   $("#c-trash").textContent = data.items.filter((i) => i.status === "excluded").length + trashedStories().length || "";
-  $("#c-inbox").textContent = data.inbox.filter((s) => s.status === "pending").length || "";
-  $("#c-removals").textContent = data.removals.filter((q) => q.status === "open").length || "";
 }
 function flash(msg, bad = false) {
   const f = $("#flash");
@@ -289,7 +280,7 @@ $(".tabs").onclick = (e) => {
 };
 function render() {
   const el = $("#view");
-  const views = { many: manyView, fill: fillView, sources: sourcesView, questions: questionsView, stories: storiesView, storiesImport: storiesImportView, storiesMany: storiesManyView, FSS: () => listView("FSS"), FRS: () => listView("FRS"), FMS: clipsView, inbox: inboxView, removals: removalsView, import: importView, trash: trashView, people: () => '<p class="sub">Loading…</p>', analytics: () => '<p class="sub">Loading…</p>', log: () => '<p class="sub">Loading…</p>' };
+  const views = { many: manyView, fill: fillView, sources: sourcesView, questions: questionsView, stories: storiesView, storiesImport: storiesImportView, storiesMany: storiesManyView, FSS: () => listView("FSS"), FRS: () => listView("FRS"), import: importView, trash: trashView, people: () => '<p class="sub">Loading…</p>', analytics: () => '<p class="sub">Loading…</p>', log: () => '<p class="sub">Loading…</p>' };
   el.innerHTML = (views[view] || views.FSS)();
   if (view === "import") wireImport();
   if (view === "people") peopleView();
@@ -395,89 +386,6 @@ function listView(std) {
       : `<div class="empty"><h2>No ${NAMES[std].many.toLowerCase()} match.</h2><p>${filtered ? "Try clearing the filters." : "Add one to get started."}</p>${filtered ? `<button class="btn primary" data-clear-filters>Clear Filters</button>` : ""}</div>`}`;
 }
 
-// ---------- published clips ----------
-function clipsView() {
-  const l = lists.FMS;
-  const q = l.q.toLowerCase();
-  const all = data.items.filter((i) => i.standard === "FMS" && i.status !== "excluded");
-  const items = all.filter((i) => (!q || JSON.stringify([i.record.title, i.record.places, i.record.event]).toLowerCase().includes(q)) && (!l.status || i.status === l.status)).sort(SORTERS[l.sort]);
-  const pending = data.inbox.filter((s) => s.status === "pending").length;
-  return `<div class="bar">
-      <input type="search" id="list-q" placeholder="Search clips…" value="${esc(l.q)}" aria-label="Search clips">
-      <label class="inline">Status<select id="list-status"><option value="">All</option>${STATUSES.map((k) => `<option value="${k}" ${l.status === k ? "selected" : ""}>${STATUS_LABEL[k]}</option>`).join("")}</select></label>
-      <span class="spacer"></span>
-      ${pending ? `<button class="btn primary" data-go="inbox">Review ${pending} New Submission${pending === 1 ? "" : "s"}</button>` : ""}
-      <a class="btn" href="${CLIPS_URL}" target="_blank" rel="noreferrer">Open Flood Clips ↗</a>
-    </div>
-    ${items.length ? `<table class="table"><thead><tr><th>Clip</th><th>Where</th><th>Status &amp; visibility</th><th>Filmed</th><th></th></tr></thead><tbody>${items
-      .map((i) => {
-        const d = i.record;
-        const loc = (d.tags.find((t) => t.startsWith("location:")) || "location:other").slice(9);
-        const depth = (d.tags.find((t) => t.startsWith("depth:")) || "depth:unknown").slice(6);
-        return `<tr><td><div class="name">${esc(d.title)}</div><div class="sub">${esc(DEPTHS[depth] || "")}${d.media?.creator ? ` · ${esc(d.media.creator)}` : ""}</div></td>
-          <td>${esc(d.places?.[0]?.name || "")}<div class="sub">${esc((WHERE[loc] || "").split(" (")[0])}</div></td>
-          <td>${stateControls(i)}</td><td class="sub">${esc(fmtDate(d.media?.capture_date))}</td>
-          <td><div class="row-actions"><a class="btn" href="${CLIPS_URL}?clip=${i.id}" target="_blank" rel="noreferrer">View ↗</a><a class="btn" href="${esc(d.source.url)}" target="_blank" rel="noreferrer">Original ↗</a>${canPublish() ? iconBtn("trash", `Move ${d.title} to trash`, `data-trash="${i.id}"`, "danger") : ""}</div></td></tr>`;
-      })
-      .join("")}</tbody></table>`
-      : `<div class="empty"><h2>No clips yet.</h2><p>Approved submissions from Flood Clips appear here.</p>${pending ? `<button class="btn primary" data-go="inbox">Review Submissions</button>` : ""}</div>`}`;
-}
-
-// ---------- clip inbox ----------
-function embedFor(url) {
-  let u;
-  try { u = new URL(url); } catch { return null; }
-  const host = u.hostname.replace(/^www\.|^m\./, "");
-  if (host === "youtu.be") return `https://www.youtube-nocookie.com/embed/${u.pathname.slice(1)}`;
-  if (host.endsWith("youtube.com")) { const id = u.searchParams.get("v") || u.pathname.match(/\/(shorts|embed|live)\/([\w-]+)/)?.[2]; return id ? `https://www.youtube-nocookie.com/embed/${id}` : null; }
-  if (host.endsWith("instagram.com")) { const m = u.pathname.match(/\/(p|reel|tv)\/([\w-]+)/); return m ? `https://www.instagram.com/${m[1]}/${m[2]}/embed` : null; }
-  if (host.endsWith("tiktok.com")) { const id = u.pathname.match(/\/video\/(\d+)/)?.[1]; return id ? `https://www.tiktok.com/embed/v2/${id}` : null; }
-  return null;
-}
-function inboxView() {
-  const pending = data.inbox.filter((s) => s.status === "pending");
-  const done = data.inbox.filter((s) => s.status !== "pending").slice(0, 30);
-  const cards = pending
-    .map((s) => {
-      const src = embedFor(s.url);
-      const opt = (map, cur, disabled = () => false) => Object.entries(map).map(([k, v]) => `<option value="${k}" ${cur === k ? "selected" : ""} ${disabled(k) ? "disabled" : ""}>${esc(v)}</option>`).join("");
-      return `<section class="panel"><div class="clip-card">
-        <div class="clip-preview">${src ? `<iframe src="${esc(src)}" title="Preview" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>` : `<div class="placeholder">No preview for this site.<br><a href="${esc(s.url)}" target="_blank" rel="noreferrer">Open the post ↗</a></div>`}</div>
-        <form class="clip-form" data-clip="${s.id}">
-          <div class="clip-meta"><span>Submitted ${esc(fmtDate(s.created_at))}</span><a href="${esc(s.url)}" target="_blank" rel="noreferrer">${esc(s.platform)} post ↗</a>${s.creator ? `<span>Posted by <strong>${esc(s.creator)}</strong></span>` : ""}${s.contact_email ? `<span>Submitter: ${esc(s.contact_email)}</span>` : ""}${s.lon != null ? `<span>Pin: ${s.lat}, ${s.lon} (rounded)</span>` : ""}</div>
-          <label class="wide">Title<input name="title" placeholder="Leave blank for “${esc((s.storm ? s.storm + " — " : "Flooding — ") + s.place_name)}”"></label>
-          <label class="wide">Description<textarea name="summary" rows="2">${esc(s.caption)}</textarea></label>
-          <label>Place<input name="place_name" value="${esc(s.place_name)}" required></label>
-          <label>Where<select name="location_type">${opt(WHERE, s.location_type, (k) => k !== "other" && s.lon == null)}</select></label>
-          <label>Depth<select name="depth">${opt(DEPTHS, s.depth)}</select></label>
-          <label>Date filmed<input name="observed_on" type="date" value="${esc(s.observed_on || "")}"></label>
-          <label>Storm<input name="storm" value="${esc(s.storm || "")}" placeholder="e.g. Hurricane Ida"></label>
-          <label>Alt text<input name="alt_text" placeholder="What the clip shows, for screen readers"></label>
-          <div class="clip-actions">${canPublish() ? `<button class="btn good" type="submit" name="do" value="approve">Approve &amp; Publish</button><button class="btn danger" type="submit" name="do" value="reject">Reject</button>` : `<span class="sub">An editor needs to approve this.</span>`}</div>
-        </form></div></section>`;
-    })
-    .join("");
-  const history = done.length
-    ? `<details ${ui.showHistory ? "open" : ""} id="inbox-history"><summary class="sub">Recently Reviewed (${done.length})</summary><table class="table"><tbody>${done
-        .map((s) => `<tr><td><div class="name">${esc(s.place_name)}</div><div class="sub"><a href="${esc(s.url)}" target="_blank" rel="noreferrer">${esc(s.platform)} post ↗</a></div></td><td><span class="pill ${s.status === "approved" ? "add" : "unchanged"}">${s.status === "approved" ? "Approved" : "Rejected"}</span></td><td class="sub">${esc(fmtDate(s.reviewed_at))}${s.review_note ? ` · ${esc(s.review_note)}` : ""}</td></tr>`)
-        .join("")}</tbody></table></details>`
-    : "";
-  return `<p class="sub">Links residents shared on Flood Clips. Check the original post: that it shows flooding in NYC, and that the place and depth look right. Approving publishes it to the map with credit to the original post.</p>
-    ${cards || `<div class="empty"><h2>No new submissions.</h2><p>New clips from <a href="${CLIPS_URL}" target="_blank" rel="noreferrer">Flood Clips</a> show up here.</p></div>`}${history}`;
-}
-
-// ---------- removal requests ----------
-function removalsView() {
-  const open = data.removals.filter((q) => q.status === "open");
-  const done = data.removals.filter((q) => q.status !== "open").slice(0, 30);
-  const row = (q, actions) => `<tr><td><div class="name">${esc(q.record_title || "(record already removed)")}</div><div class="sub"><a href="${CLIPS_URL}?clip=${q.record_id}" target="_blank" rel="noreferrer">View ↗</a></div></td><td>${esc(q.reason)}${q.contact ? `<div class="sub">From ${esc(q.contact)}</div>` : ""}</td><td class="sub">${esc(fmtDate(q.created_at))}</td><td>${actions}</td></tr>`;
-  return `<p class="sub">Requests to take something down, sent from the clip viewer. When a creator asks for their own footage to be removed, take it down.</p>
-    ${open.length ? `<table class="table"><thead><tr><th>Record</th><th>Reason</th><th>Received</th><th></th></tr></thead><tbody>${open
-      .map((q) => row(q, canPublish() ? `<div class="row-actions"><button class="btn danger" data-removal="${q.id}" data-act="remove">Take It Down</button><button class="btn" data-removal="${q.id}" data-act="dismiss">Keep It</button></div>` : `<span class="sub">Editors decide.</span>`))
-      .join("")}</tbody></table>` : `<div class="empty"><h2>No open requests.</h2></div>`}
-    ${done.length ? `<h3>Resolved</h3><table class="table"><tbody>${done.map((q) => row(q, `<span class="pill ${q.status === "removed" ? "error" : "unchanged"}">${q.status === "removed" ? "Taken down" : "Kept"}</span>${q.note ? `<div class="sub">${esc(q.note)}</div>` : ""}`)).join("")}</tbody></table>` : ""}`;
-}
-
 // ---------- trash ----------
 function trashView() {
   const items = data.items.filter((i) => i.status === "excluded").sort(SORTERS.new);
@@ -573,12 +481,6 @@ $("#view").addEventListener("click", async (e) => {
     return act(() => rpc("fc_set_record_status", { record: item.id, target: "trash", reason: "Trashed in the Editor" }), "Moved to trash.");
   }
   if (t.dataset.restore) return act(() => rpc("fc_set_record_status", { record: t.dataset.restore, target: "restore" }), "Restored as a draft. Publish it when it's ready.");
-  if (t.dataset.removal) {
-    const remove = t.dataset.act === "remove";
-    const note = prompt(remove ? "Note for the record (optional):" : "Why keep it? (optional)", "");
-    if (note === null) return;
-    return act(() => rpc("fc_resolve_removal", { request: t.dataset.removal, action: remove ? "remove" : "dismiss", note: note || (remove ? "Removal requested" : "Kept after review") }), remove ? "Taken down." : "Kept. The request is closed.");
-  }
 });
 // Source files: drop onto the box, or choose them.
 const showPicked = () => {
@@ -602,7 +504,6 @@ $("#view").addEventListener("drop", (e) => {
   showPicked();
 });
 $("#view").addEventListener("change", (e) => { if (e.target.id === "source-files") showPicked(); });
-$("#view").addEventListener("toggle", (e) => { if (e.target.id === "inbox-history") ui.showHistory = e.target.open; }, true);
 $("#view").addEventListener("submit", (e) => {
   if (storySubmit(e)) return;
   if (e.target.id === "sources-form") {
@@ -618,24 +519,6 @@ $("#view").addEventListener("submit", (e) => {
     addNames(e.target.names.value);
     return;
   }
-  const f = e.target.closest("form[data-clip]");
-  if (!f) return;
-  e.preventDefault();
-  const id = f.dataset.clip;
-  const s = data.inbox.find((x) => x.id === id);
-  if (e.submitter?.value === "reject") {
-    const note = prompt("Why reject it? (kept for your records)", "Not flooding in NYC");
-    if (note === null) return;
-    return act(() => rpc("fc_reject_clip", { submission: id, note: note || "Rejected" }), "Rejected.");
-  }
-  const edits = {};
-  for (const k of ["title", "summary", "place_name", "location_type", "depth", "observed_on", "storm", "alt_text"]) {
-    const v = f.elements[k].value.trim();
-    const orig = { summary: s.caption, place_name: s.place_name, location_type: s.location_type, depth: s.depth, observed_on: s.observed_on, storm: s.storm }[k] ?? "";
-    if (v && v !== (orig ?? "")) edits[k] = v;
-  }
-  for (const b of f.querySelectorAll("button")) b.disabled = true;
-  act(() => rpc("fc_approve_clip", { submission: id, edits }), "Approved. It's on the Flood Clips map now.");
 });
 
 // ---------- bulk: fill missing details from a web search ----------
